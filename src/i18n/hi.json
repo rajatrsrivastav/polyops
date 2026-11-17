@@ -1,0 +1,58 @@
+{
+  "appName": "FactoryEase",
+  "common": {
+    "loading": "लोड हो रहा है…",
+    "retry": "फिर कोशिश करें",
+    "save": "सेव करें",
+    "cancel": "रद्द करें",
+    "offline": "आप ऑफ़लाइन हैं। बदलाव बाद में सिंक होंगे।",
+    "offlineQueued": "ऑफ़लाइन सेव — ऑनलाइन होने पर सिंक होगा",
+    "syncing": "ऑफ़लाइन बदलाव सिंक हो रहे हैं…",
+    "pendingSync": "{{count}} सिंक के इंतज़ार में",
+    "language": "Language / भाषा",
+    "switchToHindi": "हिंदी",
+    "switchToEnglish": "English",
+    "seeAll": "सभी देखें",
+    "logout": "लॉग आउट"
+  },
+  "auth": {
+    "loginTitle": "साइन इन",
+    "email": "ईमेल",
+    "password": "पासवर्ड",
+    "submit": "साइन इन",
+    "tagline": "खर्च, हाज़िरी और इनवॉइस के लिए साइन इन करें।"
+  },
+  "owner": {
+    "home": "आज",
+    "expenses": "खर्च",
+    "attendance": "हाज़िरी",
+    "documents": "दस्तावेज़",
+    "reports": "रिपोर्ट",
+    "employees": "कर्मचारी",
+    "greeting": "नमस्ते",
+    "attendanceToday": "आज की हाज़िरी",
+    "expensesToday": "आज का खर्च",
+    "thisMonth": "इस महीने",
+    "recentInvoices": "हाल की इनवॉइस",
+    "openMonthlyReport": "मासिक रिपोर्ट खोलें",
+    "quickActions": "ज़रूरी काम",
+    "addExpense": "खर्च जोड़ें",
+    "markAttendance": "हाज़िरी लगाएँ",
+    "newInvoice": "नई इनवॉइस",
+    "newChallan": "नया चालान"
+  },
+  "employee": {
+    "attendance": "मेरी हाज़िरी"
+  },
+  "empty": {
+    "noInvoicesTitle": "अभी कोई इनवॉइस नहीं",
+    "noInvoicesBody": "ज़रूरी काम से पहली इनवॉइस बनाएँ।",
+    "noExpensesTitle": "अभी कोई खर्च नहीं",
+    "noExpensesBody": "राशि, श्रेणी और बिल की फोटो जोड़ें।",
+    "noAttendanceTitle": "अभी कोई कर्मचारी नहीं",
+    "noAttendanceBody": "पहले कर्मचारी जोड़ें, फिर हाज़िरी लगाएँ।",
+    "ctaAddExpense": "खर्च जोड़ें",
+    "ctaNewInvoice": "नई इनवॉइस",
+    "ctaAddEmployee": "कर्मचारी प्रबंधित करें"
+  }
+}

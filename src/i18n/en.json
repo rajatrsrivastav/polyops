@@ -1,0 +1,58 @@
+{
+  "appName": "FactoryEase",
+  "common": {
+    "loading": "Loading…",
+    "retry": "Retry",
+    "save": "Save",
+    "cancel": "Cancel",
+    "offline": "You are offline. Changes will sync later.",
+    "offlineQueued": "Saved offline — will sync when online",
+    "syncing": "Syncing offline changes…",
+    "pendingSync": "{{count}} waiting to sync",
+    "language": "भाषा / Language",
+    "switchToHindi": "हिंदी",
+    "switchToEnglish": "English",
+    "seeAll": "See all",
+    "logout": "Log out"
+  },
+  "auth": {
+    "loginTitle": "Sign in",
+    "email": "Email",
+    "password": "Password",
+    "submit": "Sign in",
+    "tagline": "Sign in to manage factory expenses, attendance, and invoices."
+  },
+  "owner": {
+    "home": "Today",
+    "expenses": "Expenses",
+    "attendance": "Attendance",
+    "documents": "Documents",
+    "reports": "Reports",
+    "employees": "Employees",
+    "greeting": "Namaste",
+    "attendanceToday": "Attendance today",
+    "expensesToday": "Expenses today",
+    "thisMonth": "This month",
+    "recentInvoices": "Recent invoices",
+    "openMonthlyReport": "Open monthly report",
+    "quickActions": "Quick actions",
+    "addExpense": "Add Expense",
+    "markAttendance": "Mark Attendance",
+    "newInvoice": "New Invoice",
+    "newChallan": "New Challan"
+  },
+  "employee": {
+    "attendance": "My attendance"
+  },
+  "empty": {
+    "noInvoicesTitle": "No invoices yet",
+    "noInvoicesBody": "Create your first invoice from Quick actions.",
+    "noExpensesTitle": "No expenses yet",
+    "noExpensesBody": "Log amount, category, and an optional bill photo.",
+    "noAttendanceTitle": "No employees yet",
+    "noAttendanceBody": "Add workers first, then mark present or absent.",
+    "ctaAddExpense": "Add expense",
+    "ctaNewInvoice": "New invoice",
+    "ctaAddEmployee": "Manage employees"
+  }
+}
