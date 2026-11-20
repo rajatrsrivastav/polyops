@@ -1,24 +1,20 @@
 import { z } from 'zod';
-import { getAuth } from 'firebase-admin/auth';
 import { GoogleGenAI } from '@google/genai';
-import { Types } from 'mongoose';
 import request from 'supertest';
 import { createApp } from '../src/app';
-import { Shop, User, Order, Product, AiBrief } from '../src/models';
+import { AiBrief, Order, Product, Shop, User } from '../src/models';
+import { newId } from '../src/db/rows';
 import { dashboard } from '../src/services/dashboard';
 import { briefSchema, numbersGrounded } from '../src/services/ai';
 import { dayStart, nextDay, istDay, weekKey } from '../src/lib/time';
-jest.mock('firebase-admin/auth', () => ({ getAuth: jest.fn() }));
+import { verifyBearerToken } from '../src/lib/session';
+jest.mock('../src/lib/session', () => ({ verifyBearerToken: jest.fn() }));
 jest.mock('@google/genai', () => ({ GoogleGenAI: jest.fn() }));
 const generateContent = jest.fn();
 jest
   .mocked(GoogleGenAI)
   .mockImplementation(() => ({ models: { generateContent } }) as unknown as GoogleGenAI);
-jest
-  .mocked(getAuth)
-  .mockReturnValue({
-    verifyIdToken: jest.fn(async () => ({ uid: 'owner' })),
-  } as unknown as ReturnType<typeof getAuth>);
+jest.mocked(verifyBearerToken).mockImplementation(async () => ({ authUserId: 'owner' }));
 const app = createApp({
   corsOrigins: [],
   logLevel: 'silent',
@@ -28,13 +24,12 @@ const app = createApp({
 async function fixture() {
   const shop = await Shop.create({ name: 'Millet & Co.', slug: 'millet-co', isDemo: true });
   const owner = await User.create({
-    firebaseUid: 'owner',
+    authUserId: 'owner',
     shopId: shop._id,
     role: 'owner',
     email: 'demo@example.test',
   });
-  await Promise.all([AiBrief.init(), Order.init()]);
-  return { id: owner._id, shopId: shop._id, role: 'owner' as const, firebaseUid: 'owner' };
+  return { id: owner._id, shopId: shop._id, role: 'owner' as const, authUserId: 'owner' };
 }
 beforeEach(() => {
   generateContent.mockReset();
@@ -50,21 +45,19 @@ describe('Analytics in India time', () => {
     const actor = await fixture();
     const base = {
       shopId: actor.shopId,
-      items: [
-        { productId: new Types.ObjectId(), name: 'Demo', sku: 'DEMO', qty: 2, unitPricePaise: 100 },
-      ],
+      items: [{ productId: newId(), name: 'Demo', sku: 'DEMO', qty: 2, unitPricePaise: 100 }],
       subtotalPaise: 200,
       channel: 'other' as const,
       customerName: 'Demo',
       customerPhone: '9999999999',
     };
-    await Order.create([
-      { ...base, code: 'A', createdAt: new Date('2026-11-18T19:00:00Z') }, // Nov 19 00:30 IST
+    await Order.createMany([
+      { ...base, code: 'A', createdAt: new Date('2026-11-18T19:00:00Z') },
       { ...base, code: 'B', status: 'cancelled', createdAt: new Date('2026-11-18T19:00:00Z') },
-      { ...base, code: 'C', createdAt: new Date('2026-11-12T18:29:59Z') }, // outside seven-day window
+      { ...base, code: 'C', createdAt: new Date('2026-11-12T18:29:59Z') },
       {
         ...base,
-        shopId: new Types.ObjectId(),
+        shopId: newId(),
         code: 'D',
         createdAt: new Date('2026-11-18T19:00:00Z'),
       },
@@ -80,16 +73,10 @@ describe('Analytics in India time', () => {
   });
   test('AC33: tenant/date order list uses the compound index', async () => {
     const actor = await fixture();
-    await Order.createIndexes();
-    const raw: unknown = await Order.find({
-      shopId: actor.shopId,
-      createdAt: { $gte: new Date('2026-01-01') },
-    })
-      .sort({ createdAt: -1 })
-      .explain('executionStats');
-    const explain = z.object({ queryPlanner: z.object({ winningPlan: z.unknown() }) }).parse(raw);
-    expect(JSON.stringify(explain.queryPlanner.winningPlan)).toContain('IXSCAN');
-    expect(JSON.stringify(explain.queryPlanner.winningPlan)).toContain('shopId_1_createdAt_-1');
+    const plan = await Order.explainShopDate(actor.shopId, new Date('2026-01-01'));
+    const parsed = z.string().parse(plan);
+    expect(parsed).toMatch(/Index Scan|Bitmap Index Scan|Index Only Scan/);
+    expect(parsed).toContain('orders_shop_id_created_at_idx');
   });
   test('AC23: start/end dates and cache weeks use IST including Sunday midnight', () => {
     expect(istDay(new Date('2026-11-18T19:00:00Z'))).toBe('2026-11-19');
@@ -134,7 +121,7 @@ describe('Weekly brief grounding and cache', () => {
     expect(call.contents).not.toMatch(/customer|phone|email|firebaseUid/i);
     expect(call.config.maxOutputTokens).toBe(600);
     expect(call.config.httpOptions.retryOptions.attempts).toBe(1);
-    expect(await AiBrief.countDocuments()).toBe(1);
+    expect(await AiBrief.count()).toBe(1);
   });
   test.each(['invalid JSON', 'invented number', 'provider timeout'])(
     'AC25: %s returns a saved template fallback',
@@ -157,7 +144,7 @@ describe('Weekly brief grounding and cache', () => {
       expect(response.status).toBe(200);
       expect(response.body.provider).toBe('template');
       expect(response.body.headline).not.toContain('999');
-      expect((await AiBrief.findOne())?.state).toBe('ready');
+      expect((await AiBrief.findFirst())?.state).toBe('ready');
     },
   );
   test('AC26: concurrent generation is claimed once in Mongo', async () => {

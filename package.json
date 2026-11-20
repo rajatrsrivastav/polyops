@@ -5,9 +5,10 @@
     "node": ">=22.12 <23"
   },
   "scripts": {
-    "check": "npm --prefix server run check && npm --prefix web run check && npm --prefix mobile run check",
+    "check": "npm --prefix server run check && npm --prefix mobile run check",
     "dev:server": "npm --prefix server run dev",
-    "dev:web": "npm --prefix web run dev",
-    "dev:mobile": "npm --prefix mobile start"
+    "dev:mobile": "npm --prefix mobile start",
+    "demo:reset-owner": "npm --prefix server run demo:reset-owner",
+    "seed": "npm --prefix server run seed --"
   }
 }

@@ -1,14 +1,23 @@
-import mongoose, { Types } from 'mongoose';
 import { createHash } from 'node:crypto';
-import { Order, Product, Counter, type OrderStatus } from '../models';
+import { newId } from '../db/rows';
+import { query, transaction, type Sql, type SqlValue } from '../db/pool';
+import { likeContains } from '../db/rows';
+import {
+  Counter,
+  Order,
+  Product,
+  type Channel,
+  type OrderDoc,
+  type OrderItem,
+  type OrderStatus,
+} from '../db/store';
 import { AppError, isDuplicate } from '../lib/appError';
-import { reserveStock } from './stock';
-import type { Actor } from '../middleware/auth';
 import { dayStart, istDay, nextDay } from '../lib/time';
-import { literalSearch } from './products';
+import type { Actor } from '../middleware/auth';
+import { reserveStock } from './stock';
 export type CreateOrderInput = {
   items: { productId: string; qty: number }[];
-  channel: 'instagram' | 'whatsapp' | 'website' | 'other';
+  channel: Channel;
   customerName: string;
   customerPhone: string;
 };
@@ -20,6 +29,7 @@ export type OrderQuery = {
   to?: string;
   q?: string;
 };
+const db: Sql = { query };
 export async function createOrder(actor: Actor, input: CreateOrderInput, key?: string) {
   const quantities = new Map<string, number>();
   for (const item of input.items)
@@ -36,7 +46,7 @@ export async function createOrder(actor: Actor, input: CreateOrderInput, key?: s
     .update(JSON.stringify({ ...input, items: lines }))
     .digest('hex');
   const existing = async () => {
-    const order = key ? await Order.findOne({ shopId: actor.shopId, idempotencyKey: key }) : null;
+    const order = key ? await Order.findByIdempotency(actor.shopId, key) : null;
     if (order && order.requestHash !== requestHash)
       throw new AppError(
         409,
@@ -47,23 +57,15 @@ export async function createOrder(actor: Actor, input: CreateOrderInput, key?: s
   };
   const cached = await existing();
   if (cached) return cached;
-  // Create the counter outside the transaction to avoid competing upserts during first use.
   try {
-    await Counter.updateOne(
-      { shopId: actor.shopId },
-      { $setOnInsert: { seq: 0 } },
-      { upsert: true },
-    );
+    await Counter.ensure(actor.shopId);
   } catch (error) {
     if (!isDuplicate(error)) throw error;
   }
   try {
-    return await mongoose.connection.transaction(async (session) => {
-      // Read the retry key inside the transaction too: a write conflict can restart this callback.
+    return await transaction(async (tx) => {
       if (key) {
-        const retry = await Order.findOne({ shopId: actor.shopId, idempotencyKey: key }).session(
-          session,
-        );
+        const retry = await Order.findByIdempotency(actor.shopId, key, tx);
         if (retry) {
           if (retry.requestHash !== requestHash)
             throw new AppError(
@@ -74,14 +76,13 @@ export async function createOrder(actor: Actor, input: CreateOrderInput, key?: s
           return retry;
         }
       }
-      const products = await Product.find({
-        _id: { $in: lines.map((item) => new Types.ObjectId(item.productId)) },
-        shopId: actor.shopId,
-        isActive: true,
-      })
-        .session(session)
-        .lean();
-      const catalog = new Map(products.map((product) => [String(product._id), product]));
+      const products = await Product.findByIds(
+        actor.shopId,
+        lines.map((item) => item.productId),
+        true,
+        tx,
+      );
+      const catalog = new Map(products.map((product) => [product._id, product]));
       const items = lines.map((line) => {
         const product = catalog.get(line.productId);
         if (!product)
@@ -94,40 +95,29 @@ export async function createOrder(actor: Actor, input: CreateOrderInput, key?: s
           unitPricePaise: product.pricePaise,
         };
       });
-      const subtotalPaise = items.reduce(
-        (total, item) => total + item.qty * item.unitPricePaise,
-        0,
-      );
+      const subtotalPaise = items.reduce((total, item) => total + item.qty * item.unitPricePaise, 0);
       if (!Number.isSafeInteger(subtotalPaise))
         throw new AppError(400, 'VALIDATION_ERROR', 'Order total exceeds supported amount');
-      const counter = await Counter.findOneAndUpdate(
-        { shopId: actor.shopId },
-        { $inc: { seq: 1 } },
-        { returnDocument: 'after', session },
+      const seq = await Counter.next(actor.shopId, tx);
+      if (seq === null) throw new AppError(500, 'INTERNAL', 'Order sequence unavailable');
+      const orderId = newId();
+      await reserveStock(actor, items, orderId, tx);
+      return Order.create(
+        {
+          _id: orderId,
+          shopId: actor.shopId,
+          code: `MC-${String(seq).padStart(4, '0')}`,
+          items,
+          channel: input.channel,
+          customerName: input.customerName,
+          customerPhone: input.customerPhone,
+          subtotalPaise,
+          status: 'pending',
+          statusHistory: [{ status: 'pending', at: new Date(), userId: actor.id }],
+          ...(key ? { idempotencyKey: key, requestHash } : {}),
+        },
+        tx,
       );
-      if (!counter) throw new AppError(500, 'INTERNAL', 'Order sequence unavailable');
-      const orderId = new Types.ObjectId();
-      await reserveStock(actor, items, orderId, session);
-      const [order] = await Order.create(
-        [
-          {
-            _id: orderId,
-            shopId: actor.shopId,
-            code: `MC-${String(counter.seq).padStart(4, '0')}`,
-            items,
-            channel: input.channel,
-            customerName: input.customerName,
-            customerPhone: input.customerPhone,
-            subtotalPaise,
-            status: 'pending',
-            statusHistory: [{ status: 'pending', at: new Date(), userId: actor.id }],
-            ...(key ? { idempotencyKey: key, requestHash } : {}),
-          },
-        ],
-        { session },
-      );
-      if (!order) throw new AppError(500, 'INTERNAL', 'Order could not be created');
-      return order;
     });
   } catch (error) {
     if (key && isDuplicate(error)) {
@@ -137,25 +127,17 @@ export async function createOrder(actor: Actor, input: CreateOrderInput, key?: s
     throw error;
   }
 }
-export function publicOrder(
-  order: NonNullable<Awaited<ReturnType<typeof Order.findOne>>> | Record<string, unknown>,
-  role: Actor['role'],
-) {
-  const value =
-    'toObject' in order && typeof order.toObject === 'function' ? order.toObject() : order;
-  // Explicit allowlist prevents future internal/customer fields leaking into staff responses.
+export function publicOrder(order: OrderDoc, role: Actor['role']) {
   if (role === 'staff') {
-    const record = value as Record<string, unknown>;
-    const items = record.items as { productId: unknown; sku: string; name: string; qty: number }[];
     return {
-      _id: record._id,
-      code: record.code,
-      customerName: record.customerName,
-      channel: record.channel,
-      status: record.status,
-      createdAt: record.createdAt,
-      statusHistory: record.statusHistory,
-      items: items.map((item) => ({
+      _id: order._id,
+      code: order.code,
+      customerName: order.customerName,
+      channel: order.channel,
+      status: order.status,
+      createdAt: order.createdAt,
+      statusHistory: order.statusHistory,
+      items: order.items.map((item) => ({
         productId: item.productId,
         sku: item.sku,
         name: item.name,
@@ -163,54 +145,68 @@ export function publicOrder(
       })),
     };
   }
-  const result = { ...value } as Record<string, unknown>;
-  delete result.requestHash;
-  delete result.idempotencyKey;
-  return result;
+  return {
+    _id: order._id,
+    shopId: order.shopId,
+    code: order.code,
+    items: order.items,
+    channel: order.channel,
+    customerName: order.customerName,
+    customerPhone: order.customerPhone,
+    subtotalPaise: order.subtotalPaise,
+    status: order.status,
+    statusHistory: order.statusHistory,
+    createdAt: order.createdAt,
+    updatedAt: order.updatedAt,
+  };
 }
 export async function getOrder(actor: Actor, id: string) {
-  const order = await Order.findOne({ _id: id, shopId: actor.shopId }).lean();
+  const order = await Order.findInShop(id, actor.shopId);
   if (!order) throw new AppError(404, 'NOT_FOUND', 'Order not found');
   return publicOrder(order, actor.role);
 }
-export async function listOrders(actor: Actor, query: OrderQuery) {
+function orderWhere(actor: Actor, input: OrderQuery) {
+  const params: SqlValue[] = [actor.shopId];
+  const where = ['shop_id = $1'];
   const today = istDay();
-  const filter = {
-    shopId: actor.shopId,
-    ...(query.status
-      ? { status: query.status }
-      : actor.role === 'staff'
-        ? { status: { $in: ['pending', 'packed'] as OrderStatus[] } }
-        : {}),
-    ...(query.from || query.to || actor.role === 'staff'
-      ? {
-          createdAt: {
-            $gte: dayStart(query.from ?? (actor.role === 'staff' ? today : '2000-01-01')),
-            $lt: nextDay(query.to ?? today),
-          },
-        }
-      : {}),
-    ...(query.q
-      ? {
-          $or: [
-            { code: { $regex: literalSearch(query.q), $options: 'i' } },
-            { customerName: { $regex: literalSearch(query.q), $options: 'i' } },
-          ],
-        }
-      : {}),
-  };
-  const [orders, total] = await Promise.all([
-    Order.find(filter)
-      .sort({ createdAt: -1, _id: -1 })
-      .skip((query.page - 1) * query.limit)
-      .limit(query.limit)
-      .lean(),
-    Order.countDocuments(filter),
-  ]);
-  return {
-    items: orders.map((order) => publicOrder(order, actor.role)),
-    total,
-    page: query.page,
-    limit: query.limit,
-  };
+  if (input.status) {
+    params.push(input.status);
+    where.push(`status = $${params.length}`);
+  } else if (actor.role === 'staff') where.push(`status IN ('pending', 'packed')`);
+  if (input.from || input.to || actor.role === 'staff') {
+    params.push(dayStart(input.from ?? (actor.role === 'staff' ? today : '2000-01-01')));
+    where.push(`created_at >= $${params.length}`);
+    params.push(nextDay(input.to ?? today));
+    where.push(`created_at < $${params.length}`);
+  }
+  if (input.q) {
+    params.push(likeContains(input.q));
+    where.push(
+      `(code ILIKE $${params.length} ESCAPE '\\' OR customer_name ILIKE $${params.length} ESCAPE '\\')`,
+    );
+  }
+  return { where: where.join(' AND '), params };
 }
+export async function listOrders(actor: Actor, input: OrderQuery) {
+  const filter = orderWhere(actor, input);
+  const totalRow = await db.query(
+    `SELECT COUNT(*)::bigint AS total FROM orders WHERE ${filter.where}`,
+    filter.params,
+  );
+  const total = Number(totalRow.rows[0]?.total ?? 0);
+  const listed = await db.query(
+    `SELECT id, shop_id, code, items, channel, customer_name, customer_phone, subtotal_paise, status,
+            idempotency_key, request_hash, status_history, created_at, updated_at
+     FROM orders WHERE ${filter.where}
+     ORDER BY created_at DESC, id DESC
+     LIMIT $${filter.params.length + 1} OFFSET $${filter.params.length + 2}`,
+    [...filter.params, input.limit, (input.page - 1) * input.limit],
+  );
+  const items = [];
+  for (const row of listed.rows) {
+    const found = await Order.findById(String(row.id));
+    if (found) items.push(publicOrder(found, actor.role));
+  }
+  return { items, total, page: input.page, limit: input.limit };
+}
+export type { OrderItem };

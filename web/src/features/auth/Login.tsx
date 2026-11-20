@@ -1,24 +1,19 @@
 import { useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
-import { signInWithEmailAndPassword } from 'firebase/auth';
-import { auth, firebaseConfigured } from '../../lib/firebase';
+import { signIn, authConfigured } from '../../lib/session';
 import { Icon } from '../../components/ui';
 export function Login() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const configured = firebaseConfigured && Boolean(import.meta.env.VITE_API_URL);
+  const configured = authConfigured;
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!auth || busy) return;
+    if (!configured || busy) return;
     const values = new FormData(event.currentTarget);
     setBusy(true);
     setError('');
     try {
-      await signInWithEmailAndPassword(
-        auth,
-        String(values.get('email')),
-        String(values.get('password')),
-      );
+      await signIn(String(values.get('email')), String(values.get('password')));
     } catch {
       setError('Sign-in failed. Check your email and password, then retry.');
     } finally {
@@ -68,7 +63,7 @@ export function Login() {
           {!configured && (
             <div className="setup-note" role="status">
               <strong>Your workspace needs connecting.</strong>
-              <p>Configure Firebase and the API address using the setup guide before signing in.</p>
+              <p>Configure the API address using the setup guide before signing in.</p>
             </div>
           )}
           <form onSubmit={submit}>

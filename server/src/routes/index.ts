@@ -77,7 +77,7 @@ export function apiRouter() {
   router.use(auth);
   router.get('/me', validate({ query: emptyQuery }), async (req, res) => {
     const user = currentUser(req);
-    const shop = await Shop.findOne({ _id: user.shopId }).select('name slug isDemo').lean();
+    const shop = await Shop.findById(user.shopId);
     res.json({
       id: user.id,
       shopId: user.shopId,
@@ -202,7 +202,7 @@ export function apiRouter() {
   const aiLimiter = rateLimit({
     windowMs: 3600000,
     limit: 5,
-    keyGenerator: (req) => currentUser(req).id.toString(),
+    keyGenerator: (req) => currentUser(req).id,
     standardHeaders: 'draft-8',
     legacyHeaders: false,
     handler: (_req, res) => {

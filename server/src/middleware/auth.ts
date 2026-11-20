@@ -1,30 +1,24 @@
 import type { RequestHandler, Request } from 'express';
-import { getAuth } from 'firebase-admin/auth';
-import { User } from '../models';
+import { User } from '../db/store';
 import { AppError } from '../lib/appError';
+import { verifyBearerToken } from '../lib/session';
 export const auth: RequestHandler = async (req, _res, next) => {
   const match = /^Bearer\s+(\S+)\s*$/i.exec(req.headers.authorization ?? '');
   const token = match?.[1];
   if (!token) throw new AppError(401, 'UNAUTHENTICATED', 'A valid sign-in is required');
-  let uid: string;
+  let authUserId: string;
   try {
-    uid = (await getAuth().verifyIdToken(token, true)).uid;
+    const verified = await verifyBearerToken(token);
+    if (!verified) throw new AppError(401, 'UNAUTHENTICATED', 'A valid sign-in is required');
+    authUserId = verified.authUserId;
   } catch (error) {
-    // Configuration and upstream outages are operational failures, not invalid credentials.
-    const code =
-      typeof error === 'object' && error !== null && 'code' in error ? String(error.code) : '';
-    if (code === 'app/network-error' || code === 'auth/internal-error')
-      throw new AppError(
-        503,
-        'AUTH_UNAVAILABLE',
-        'Sign-in verification is temporarily unavailable',
-      );
-    throw new AppError(401, 'UNAUTHENTICATED', 'A valid sign-in is required');
+    if (error instanceof AppError) throw error;
+    throw new AppError(503, 'AUTH_UNAVAILABLE', 'Sign-in verification is temporarily unavailable');
   }
-  const user = await User.findOne({ firebaseUid: uid }).lean();
+  const user = await User.findByAuthUserId(authUserId);
   if (!user)
     throw new AppError(403, 'NOT_PROVISIONED', 'Your account has not been assigned to a shop');
-  req.user = { id: user._id, shopId: user.shopId, role: user.role, firebaseUid: uid };
+  req.user = { id: user._id, shopId: user.shopId, role: user.role, authUserId };
   next();
 };
 export function currentUser(req: Request) {

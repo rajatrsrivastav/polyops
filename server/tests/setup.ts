@@ -1,34 +1,25 @@
-import * as os from 'node:os';
-import mongoose from 'mongoose';
-import { MongoMemoryReplSet } from 'mongodb-memory-server';
-let replica: MongoMemoryReplSet;
+import { markDatabaseClosed, markDatabaseOpen, databaseReadyState, disconnectDatabase } from '../src/db/pool';
+import { ensureSchema, resetDatabase } from '../src/db/schema';
+import { usePglite } from './pglitePool';
+process.env.BETTER_AUTH_SECRET ??= 'synthetic-test-secret-value-32chars';
+process.env.BETTER_AUTH_URL ??= 'http://localhost:3000';
 beforeAll(async () => {
-  replica = await MongoMemoryReplSet.create({
-    replSet: { count: 1 },
-    binary: { version: '7.0.14' },
-  });
-  await mongoose.connect(replica.getUri(), {
-    runtimeAdapters: { os },
-    serverSelectionTimeoutMS: 5000,
-  });
+  await usePglite();
+  await ensureSchema();
 });
 afterEach(async () => {
-  if (mongoose.connection.readyState !== 1) return;
-  await Promise.all(
-    Object.values(mongoose.connection.collections).map((collection) => collection.deleteMany({})),
-  );
+  if (databaseReadyState() !== 1) return;
+  await resetDatabase();
 });
 afterAll(async () => {
-  await mongoose.disconnect();
-  await replica?.stop();
+  await disconnectDatabase();
 });
-
 export async function reconnectTestDatabase() {
-  await mongoose.connect(replica.getUri(), {
-    runtimeAdapters: { os },
-    serverSelectionTimeoutMS: 5000,
-  });
+  markDatabaseOpen();
 }
-export function testDatabaseUri() {
-  return replica.getUri();
+export function markTestDatabaseClosed() {
+  markDatabaseClosed();
+}
+export function testDatabaseReadyState() {
+  return databaseReadyState();
 }

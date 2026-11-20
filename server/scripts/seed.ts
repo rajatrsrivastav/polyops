@@ -1,87 +1,106 @@
-import mongoose from 'mongoose';
-import { z } from 'zod';
-import { Shop, User, Product, Order, InventoryMovement, Counter, AiBrief } from '../src/models';
+import { readSeedConfig, SeedConfigError } from './seedConfig';
+import { connectDatabase, databaseReadyState, disconnectDatabase, transaction } from '../src/db/pool';
+import { ensureSchema } from '../src/db/schema';
+import { Order, Product, Shop, User } from '../src/models';
+import { AiBrief, Counter, InventoryMovement } from '../src/models';
+import { deleteAuthUser, insertAuthUser } from '../src/services/identity';
 import { receiveStock } from '../src/services/stock';
 import { createOrder } from '../src/services/orders';
 import { changeOrderStatus } from '../src/services/orderStatus';
 import { dayStart } from '../src/lib/time';
 import { createLogger } from '../src/lib/logger';
+import { query } from '../src/db/pool';
 const logger = createLogger();
-export async function seed() {
-  const env = z
-    .object({
-      MONGO_URI: z.string().min(1),
-      DEMO_OWNER_UID: z.string().min(1),
-      DEMO_STAFF_ONE_UID: z.string().min(1),
-      DEMO_STAFF_TWO_UID: z.string().min(1),
-      DEMO_SEED_END_DATE: z.iso.date().default('2026-11-19'),
-    })
-    .parse(process.env);
-  if (new Set([env.DEMO_OWNER_UID, env.DEMO_STAFF_ONE_UID, env.DEMO_STAFF_TWO_UID]).size !== 3)
-    throw new Error('Demo Firebase UIDs must be distinct');
+const db = { query };
+export async function seed(
+  options: { requirePasswords?: boolean; reportProgress?: boolean; quick?: boolean } = {},
+) {
+  const env = readSeedConfig(process.env, options.requirePasswords ?? false);
   if (
     process.env.NODE_ENV === 'production' &&
     !(process.argv.includes('--demo-only') && process.argv.includes('--shop=millet-co'))
   )
     throw new Error('Production seed requires --demo-only --shop=millet-co');
-  await mongoose.connect(env.MONGO_URI);
+  const opened = databaseReadyState() !== 1;
+  const report = (message: string) => {
+    if (options.reportProgress) logger.info(message);
+  };
   try {
-    const current = await Shop.findOne({ slug: 'millet-co' });
+    if (opened) {
+      if (!env.DATABASE_URL) throw new Error('DATABASE_URL is required');
+      report('Connecting to Postgres for demo seed');
+      await connectDatabase(env.DATABASE_URL, { connectionTimeoutMillis: 15000 });
+    }
+    report('Checking demo shop and database schema');
+    await ensureSchema();
+    const current = await Shop.findBySlug('millet-co');
     if (current && !current.isDemo) throw new Error('Refusing to modify a non-demo shop');
     const shop =
       current ?? (await Shop.create({ name: 'Millet & Co.', slug: 'millet-co', isDemo: true }));
     if (
-      await User.exists({
-        firebaseUid: { $in: [env.DEMO_OWNER_UID, env.DEMO_STAFF_ONE_UID, env.DEMO_STAFF_TWO_UID] },
-        shopId: { $ne: shop._id },
-      })
+      (await User.countOutsideShop(
+        [env.DEMO_OWNER_UID, env.DEMO_STAFF_ONE_UID, env.DEMO_STAFF_TWO_UID],
+        shop._id,
+      )) > 0
     )
-      throw new Error('A demo Firebase UID belongs to another shop');
-    await mongoose.connection.transaction(async (session) => {
-      for (const remove of [
-        () => User.deleteMany({ shopId: shop._id }, { session }),
-        () => Product.deleteMany({ shopId: shop._id }, { session }),
-        () => Order.deleteMany({ shopId: shop._id }, { session }),
-        () => InventoryMovement.deleteMany({ shopId: shop._id }, { session }),
-        () => Counter.deleteMany({ shopId: shop._id }, { session }),
-        () => AiBrief.deleteMany({ shopId: shop._id }, { session }),
-      ])
-        await remove();
+      throw new Error('A demo identity belongs to another shop');
+    report('Replacing demo shop data and provisioning demo sign-in accounts');
+    await transaction(async (tx) => {
+      await User.deleteByShop(shop._id, tx);
+      await Product.deleteByShop(shop._id, tx);
+      await Order.deleteByShop(shop._id, tx);
+      await InventoryMovement.deleteByShop(shop._id, tx);
+      await Counter.deleteByShop(shop._id, tx);
+      await AiBrief.deleteByShop(shop._id, tx);
     });
-    await Promise.all([
-      Product.createIndexes(),
-      Order.createIndexes(),
-      Counter.createIndexes(),
-      InventoryMovement.createIndexes(),
-      AiBrief.createIndexes(),
-      User.createIndexes(),
-    ]);
-    const [owner] = await User.create([
+    const identities = [
       {
-        firebaseUid: env.DEMO_OWNER_UID,
-        shopId: shop._id,
+        id: env.DEMO_OWNER_UID,
         email: 'owner@millet.example',
-        role: 'owner',
+        name: 'Millet owner',
+        password: env.DEMO_OWNER_PASSWORD,
+        role: 'owner' as const,
       },
       {
-        firebaseUid: env.DEMO_STAFF_ONE_UID,
-        shopId: shop._id,
+        id: env.DEMO_STAFF_ONE_UID,
         email: 'packer-one@millet.example',
-        role: 'staff',
+        name: 'Packer one',
+        password: env.DEMO_STAFF_ONE_PASSWORD,
+        role: 'staff' as const,
       },
       {
-        firebaseUid: env.DEMO_STAFF_TWO_UID,
-        shopId: shop._id,
+        id: env.DEMO_STAFF_TWO_UID,
         email: 'packer-two@millet.example',
-        role: 'staff',
+        name: 'Packer two',
+        password: env.DEMO_STAFF_TWO_PASSWORD,
+        role: 'staff' as const,
       },
-    ]);
+    ];
+    for (const identity of identities) await deleteAuthUser(db, identity.id);
+    const owner = await transaction(async (tx) => {
+      const created = [];
+      for (const identity of identities) {
+        await insertAuthUser(tx, identity);
+        created.push(
+          await User.create(
+            {
+              authUserId: identity.id,
+              shopId: shop._id,
+              email: identity.email,
+              role: identity.role,
+            },
+            tx,
+          ),
+        );
+      }
+      return created[0];
+    });
     if (!owner) throw new Error('Demo owner missing');
     const actor = {
       id: owner._id,
       shopId: shop._id,
       role: 'owner' as const,
-      firebaseUid: owner.firebaseUid,
+      authUserId: owner.authUserId,
     };
     const names = [
       'Ragi Cookies',
@@ -105,8 +124,12 @@ export async function seed() {
       'Roasted Millet',
       'Family Snack Box',
     ];
+    const selectedNames = options.quick ? names.slice(0, 8) : names;
+    const days = options.quick ? 7 : 60;
+    const totalOrders = days * 2;
     const catalog = [];
-    for (const [index, name] of names.entries()) {
+    report(`Creating ${selectedNames.length} demo materials and their opening stock`);
+    for (const [index, name] of selectedNames.entries()) {
       const product = await Product.create({
         shopId: shop._id,
         name,
@@ -121,17 +144,9 @@ export async function seed() {
       catalog.push(product);
     }
     const end = dayStart(env.DEMO_SEED_END_DATE);
-    await InventoryMovement.updateMany(
-      { shopId: shop._id, type: 'receive' },
-      {
-        $set: {
-          createdAt: new Date(end.getTime() - 60 * 86400000),
-          updatedAt: new Date(end.getTime() - 60 * 86400000),
-        },
-      },
-      { timestamps: false },
-    );
-    for (let day = 59; day >= 0; day--) {
+    await InventoryMovement.stampShop(shop._id, 'receive', new Date(end.getTime() - days * 86400000));
+    report(`Creating ${totalOrders} synthetic orders`);
+    for (let day = days - 1; day >= 0; day--) {
       for (let slot = 0; slot < 2; slot++) {
         const index = (day * 7 + slot * 3) % catalog.length;
         const product = catalog[index];
@@ -142,55 +157,46 @@ export async function seed() {
           customerName: `Demo Customer ${String(day * 2 + slot + 1).padStart(3, '0')}`,
           customerPhone: '9999999999',
         });
-        if (!order) throw new Error('Seed order missing');
         const cancelled = day % 13 === 0 && day > 0;
-        if (cancelled) await changeOrderStatus(actor, order.id, 'cancelled');
+        let saved = order;
+        if (cancelled) saved = await changeOrderStatus(actor, order.id, 'cancelled');
         else if (day > 0) {
           await changeOrderStatus(actor, order.id, 'packed');
-          await changeOrderStatus(actor, order.id, 'shipped');
-          if (day > 2) await changeOrderStatus(actor, order.id, 'delivered');
+          saved = await changeOrderStatus(actor, order.id, 'shipped');
+          if (day > 2) saved = await changeOrderStatus(actor, order.id, 'delivered');
         }
         const at = new Date(end.getTime() - day * 86400000 + (10 + slot * 4) * 3600000);
-        const saved = await Order.findById(order._id);
-        if (!saved) throw new Error('Seed order missing after status update');
-        await Order.updateOne(
-          { _id: order._id, shopId: shop._id },
-          {
-            $set: {
-              createdAt: at,
-              updatedAt: at,
-              statusHistory: saved.statusHistory.map((entry, n) => ({
-                status: entry.status,
-                userId: entry.userId,
-                at: new Date(at.getTime() + n * 60000),
-              })),
-            },
-          },
-          { timestamps: false },
-        );
-        await InventoryMovement.updateMany(
-          { shopId: shop._id, orderId: order._id },
-          { $set: { createdAt: at, updatedAt: at } },
-          { timestamps: false },
-        );
+        await Order.replaceSchedule(saved._id, shop._id, {
+          createdAt: at,
+          updatedAt: at,
+          statusHistory: saved.statusHistory.map((entry, n) => ({
+            status: entry.status,
+            userId: entry.userId,
+            at: new Date(at.getTime() + n * 60000),
+          })),
+        });
+        await InventoryMovement.stampOrder(shop._id, saved._id, at);
       }
+      const completed = (days - day) * 2;
+      if (completed === totalOrders || completed % (options.quick ? 4 : 20) === 0)
+        report(`Created ${completed} of ${totalOrders} synthetic orders`);
     }
     logger.info(
       {
-        shopId: String(shop._id),
+        shopId: shop._id,
         products: catalog.length,
-        orders: await Order.countDocuments({ shopId: shop._id }),
+        orders: await Order.count(shop._id),
       },
       'Synthetic demo seed complete; never report as real usage',
     );
   } finally {
-    await mongoose.disconnect();
+    if (opened) await disconnectDatabase();
   }
 }
 if (require.main === module)
-  void seed().catch((error) => {
+  void seed({ requirePasswords: true, reportProgress: true, quick: process.argv.includes('--quick') }).catch((error) => {
     logger.error(
-      { errorType: error instanceof Error ? error.name : 'UnknownError' },
+      { errorType: error instanceof Error ? error.name : 'UnknownError', reason: error instanceof SeedConfigError ? error.message : undefined },
       'Demo seed failed; check required environment names and demo-only guard',
     );
     process.exitCode = 1;

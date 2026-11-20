@@ -1,4 +1,6 @@
-import { Product } from '../models';
+import { query, type Sql, type SqlValue } from '../db/pool';
+import { likeContains } from '../db/rows';
+import { Product, type ProductDoc } from '../db/store';
 import { AppError, isDuplicate } from '../lib/appError';
 import type { Actor } from '../middleware/auth';
 export type ProductInput = {
@@ -8,37 +10,51 @@ export type ProductInput = {
   lowStockThreshold: number;
 };
 export type ProductQuery = { page: number; limit: number; q?: string; lowStock?: boolean };
-export function literalSearch(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-export async function listProducts(actor: Actor, query: ProductQuery) {
-  const filter = {
-    shopId: actor.shopId,
-    isActive: true,
-    ...(query.q
-      ? {
-          $or: [
-            { name: { $regex: literalSearch(query.q), $options: 'i' } },
-            { sku: { $regex: literalSearch(query.q), $options: 'i' } },
-          ],
-        }
-      : {}),
-    ...(query.lowStock ? { $expr: { $lte: ['$stock', '$lowStockThreshold'] } } : {}),
+const db: Sql = { query };
+function publicProduct(product: ProductDoc, role: Actor['role']) {
+  const base = {
+    _id: product._id,
+    shopId: product.shopId,
+    sku: product.sku,
+    name: product.name,
+    stock: product.stock,
+    stockVersion: product.stockVersion,
+    lowStockThreshold: product.lowStockThreshold,
+    isActive: product.isActive,
+    createdAt: product.createdAt,
+    updatedAt: product.updatedAt,
   };
-  const [items, total] = await Promise.all([
-    Product.find(filter)
-      .select(actor.role === 'staff' ? '-pricePaise' : '')
-      .sort({ createdAt: -1, _id: -1 })
-      .skip((query.page - 1) * query.limit)
-      .limit(query.limit)
-      .lean(),
-    Product.countDocuments(filter),
-  ]);
-  return { items, total, page: query.page, limit: query.limit };
+  if (role === 'staff') return base;
+  return { ...base, pricePaise: product.pricePaise };
+}
+export async function listProducts(actor: Actor, input: ProductQuery) {
+  const params: SqlValue[] = [actor.shopId];
+  const where = ['shop_id = $1', 'is_active = true'];
+  if (input.q) {
+    params.push(likeContains(input.q));
+    where.push(`(name ILIKE $${params.length} ESCAPE '\\' OR sku ILIKE $${params.length} ESCAPE '\\')`);
+  }
+  if (input.lowStock) where.push('stock <= low_stock_threshold');
+  const clause = where.join(' AND ');
+  const totalRow = await db.query(`SELECT COUNT(*)::bigint AS total FROM products WHERE ${clause}`, params);
+  const total = Number(totalRow.rows[0]?.total ?? 0);
+  const listed = await db.query(
+    `SELECT id FROM products WHERE ${clause} ORDER BY created_at DESC, id DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
+    [...params, input.limit, (input.page - 1) * input.limit],
+  );
+  const items = [];
+  for (const row of listed.rows) {
+    const product = await Product.findById(String(row.id));
+    if (product) items.push(publicProduct(product, actor.role));
+  }
+  return { items, total, page: input.page, limit: input.limit };
 }
 export async function createProduct(actor: Actor, input: ProductInput) {
   try {
-    return await Product.create({ ...input, shopId: actor.shopId });
+    return publicProduct(
+      await Product.create({ ...input, shopId: actor.shopId }),
+      actor.role,
+    );
   } catch (error) {
     if (isDuplicate(error))
       throw new AppError(409, 'DUPLICATE_SKU', 'This SKU already exists in your shop');
@@ -51,13 +67,9 @@ export async function updateProduct(
   input: Partial<ProductInput> & { isActive?: boolean },
 ) {
   try {
-    const product = await Product.findOneAndUpdate(
-      { _id: id, shopId: actor.shopId },
-      { $set: input },
-      { returnDocument: 'after', runValidators: true },
-    );
+    const product = await Product.updateFields(id, actor.shopId, input);
     if (!product) throw new AppError(404, 'NOT_FOUND', 'Product not found');
-    return product;
+    return publicProduct(product, actor.role);
   } catch (error) {
     if (isDuplicate(error))
       throw new AppError(409, 'DUPLICATE_SKU', 'This SKU already exists in your shop');

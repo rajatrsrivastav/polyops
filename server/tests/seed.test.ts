@@ -1,9 +1,8 @@
-import mongoose from 'mongoose';
 import { seed } from '../scripts/seed';
-import { Shop, Product, Order, InventoryMovement } from '../src/models';
-import { testDatabaseUri, reconnectTestDatabase } from './setup';
+import { InventoryMovement, Order, Product, Shop } from '../src/models';
+import { reconnectTestDatabase, testDatabaseReadyState } from './setup';
 const variables = [
-  'MONGO_URI',
+  'DATABASE_URL',
   'DEMO_OWNER_UID',
   'DEMO_STAFF_ONE_UID',
   'DEMO_STAFF_TWO_UID',
@@ -18,7 +17,6 @@ afterAll(() => {
   }
 });
 test('AC31: deterministic demo seed preserves other shops and every stock balance reconciles', async () => {
-  process.env.MONGO_URI = testDatabaseUri();
   process.env.DEMO_OWNER_UID = 'synthetic-owner';
   process.env.DEMO_STAFF_ONE_UID = 'synthetic-staff-one';
   process.env.DEMO_STAFF_TWO_UID = 'synthetic-staff-two';
@@ -32,16 +30,13 @@ test('AC31: deterministic demo seed preserves other shops and every stock balanc
   });
   await seed();
   await reconnectTestDatabase();
-  const shop = await Shop.findOne({ slug: 'millet-co' });
+  const shop = await Shop.findBySlug('millet-co');
   expect(shop?.isDemo).toBe(true);
-  expect(await Product.countDocuments({ shopId: shop?._id })).toBe(20);
-  expect(await Order.countDocuments({ shopId: shop?._id })).toBe(120);
-  const first = await Order.aggregate([
-    { $match: { shopId: shop?._id } },
-    { $group: { _id: null, total: { $sum: '$subtotalPaise' } } },
-  ]);
-  for (const product of await Product.find({ shopId: shop?._id })) {
-    const movements = await InventoryMovement.find({ productId: product._id }).lean();
+  expect(await Product.countByShop(shop?._id ?? '')).toBe(20);
+  expect(await Order.count(shop?._id)).toBe(120);
+  const first = await Order.sumSubtotal(shop?._id ?? '');
+  for (const product of await Product.findByShop(shop?._id ?? '')) {
+    const movements = await InventoryMovement.findByProduct(product._id);
     const balance = movements.reduce(
       (total, movement) => total + (movement.type === 'reserve' ? -movement.qty : movement.qty),
       0,
@@ -51,22 +46,29 @@ test('AC31: deterministic demo seed preserves other shops and every stock balanc
   }
   await seed();
   await reconnectTestDatabase();
-  expect(await Order.countDocuments({ shopId: shop?._id })).toBe(120);
-  const second = await Order.aggregate([
-    { $match: { shopId: shop?._id } },
-    { $group: { _id: null, total: { $sum: '$subtotalPaise' } } },
-  ]);
+  expect(await Order.count(shop?._id)).toBe(120);
+  const second = await Order.sumSubtotal(shop?._id ?? '');
   expect(first).toEqual(second);
-  expect(await Product.exists({ _id: untouched._id })).not.toBeNull();
-  expect(await Shop.exists({ _id: pilot._id })).not.toBeNull();
+  expect(await Product.findById(untouched._id)).not.toBeNull();
+  expect(await Shop.findById(pilot._id)).not.toBeNull();
 });
 test('AC32: production seed without explicit demo flags is refused before connecting', async () => {
-  process.env.MONGO_URI = testDatabaseUri();
   process.env.DEMO_OWNER_UID = 'synthetic-owner';
   process.env.DEMO_STAFF_ONE_UID = 'synthetic-staff-one';
   process.env.DEMO_STAFF_TWO_UID = 'synthetic-staff-two';
   process.env.NODE_ENV = 'production';
   await expect(seed()).rejects.toThrow('Production seed requires');
-  expect(mongoose.connection.readyState).toBe(1);
+  expect(testDatabaseReadyState()).toBe(1);
   process.env.NODE_ENV = saved.get('NODE_ENV') ?? 'test';
+});
+
+test('quick demo seed creates a smaller catalog and one week of orders', async () => {
+  process.env.DEMO_OWNER_UID = 'synthetic-owner';
+  process.env.DEMO_STAFF_ONE_UID = 'synthetic-staff-one';
+  process.env.DEMO_STAFF_TWO_UID = 'synthetic-staff-two';
+  await seed({ quick: true });
+  const shop = await Shop.findBySlug('millet-co');
+  expect(shop?.isDemo).toBe(true);
+  expect(await Product.countByShop(shop?._id ?? '')).toBe(8);
+  expect(await Order.count(shop?._id ?? '')).toBe(14);
 });

@@ -1,15 +1,11 @@
-import mongoose from 'mongoose';
-import { reconnectTestDatabase } from './setup';
+import { markTestDatabaseClosed, reconnectTestDatabase } from './setup';
 import request from 'supertest';
-import { getAuth } from 'firebase-admin/auth';
 import { createApp } from '../src/app';
-import { Product, Shop, User, Order, InventoryMovement } from '../src/models';
+import { InventoryMovement, Order, Product, Shop, User } from '../src/models';
 import { readConfig } from '../src/config';
-jest.mock('firebase-admin/auth', () => ({ getAuth: jest.fn() }));
-const verifyIdToken = jest.fn();
-const mockedAuth = jest.mocked(getAuth);
-// The cast supplies only the external operation used by the application.
-mockedAuth.mockReturnValue({ verifyIdToken } as unknown as ReturnType<typeof getAuth>);
+import { verifyBearerToken } from '../src/lib/session';
+jest.mock('../src/lib/session', () => ({ verifyBearerToken: jest.fn() }));
+const verify = jest.mocked(verifyBearerToken);
 const app = createApp({
   corsOrigins: ['http://localhost:5173'],
   logLevel: 'silent',
@@ -21,9 +17,9 @@ let productId: string;
 async function fixtures(stock = 3) {
   const shop = await Shop.create({ name: 'Millet & Co.', slug: 'millet-co', isDemo: true });
   shopId = shop.id;
-  await User.create([
-    { firebaseUid: 'owner-uid', shopId, role: 'owner', email: 'owner@example.test' },
-    { firebaseUid: 'staff-uid', shopId, role: 'staff', email: 'staff@example.test' },
+  await User.createMany([
+    { authUserId: 'owner-uid', shopId, role: 'owner', email: 'owner@example.test' },
+    { authUserId: 'staff-uid', shopId, role: 'staff', email: 'staff@example.test' },
   ]);
   const product = await Product.create({
     shopId,
@@ -34,7 +30,6 @@ async function fixtures(stock = 3) {
     lowStockThreshold: 2,
   });
   productId = product.id;
-  await Promise.all([Order.init(), Product.init(), User.init(), InventoryMovement.init()]);
 }
 function auth(role = 'owner') {
   return { Authorization: `Bearer ${role}` };
@@ -42,16 +37,16 @@ function auth(role = 'owner') {
 function payload(qty = 1) {
   return {
     items: [{ productId, qty }],
-    channel: 'instagram',
+    channel: 'instagram' as const,
     customerName: 'Demo Customer',
     customerPhone: '9999999999',
   };
 }
 beforeEach(() => {
-  verifyIdToken.mockReset();
-  verifyIdToken.mockImplementation(async (token: string) => {
-    if (!['owner', 'staff', 'stranger'].includes(token)) throw new Error('Invalid token');
-    return { uid: `${token}-uid` };
+  verify.mockReset();
+  verify.mockImplementation(async (token: string) => {
+    if (!['owner', 'staff', 'stranger'].includes(token)) return null;
+    return { authUserId: `${token}-uid` };
   });
 });
 describe('API foundation', () => {
@@ -59,7 +54,7 @@ describe('API foundation', () => {
     const response = await request(app).get('/health');
     expect(response.status).toBe(200);
     expect(response.body).toEqual({ ok: true, ts: expect.any(String) });
-    expect(verifyIdToken).not.toHaveBeenCalled();
+    expect(verify).not.toHaveBeenCalled();
   });
   test('AC2: unknown routes use the documented 404 error shape', async () => {
     const response = await request(app).get('/missing');
@@ -77,7 +72,7 @@ describe('API foundation', () => {
     expect((await request(app).get('/ready')).status).toBe(200);
   });
   test('AC28: liveness stays up while disconnected and readiness returns 503', async () => {
-    await mongoose.disconnect();
+    markTestDatabaseClosed();
     try {
       expect((await request(app).get('/health')).status).toBe(200);
       const response = await request(app).get('/ready');
@@ -88,18 +83,17 @@ describe('API foundation', () => {
     }
   });
   test('AC5: configuration rejects missing names without leaking supplied values', () => {
-    expect(() => readConfig({})).toThrow(/MONGO_URI/);
+    expect(() => readConfig({})).toThrow(/DATABASE_URL/);
     try {
-      readConfig({ MONGO_URI: 'sensitive' });
+      readConfig({ DATABASE_URL: 'sensitive' });
     } catch (error) {
       expect(String(error)).not.toContain('sensitive');
     }
     expect(() =>
       readConfig({
-        MONGO_URI: 'mongodb://local/packbay',
-        FIREBASE_PROJECT_ID: 'demo',
-        FIREBASE_CLIENT_EMAIL: 'server@example.test',
-        FIREBASE_PRIVATE_KEY: 'not-a-real-key',
+        DATABASE_URL: 'postgres://local/packbay',
+        BETTER_AUTH_SECRET: 'synthetic-test-secret-value-32chars',
+        BETTER_AUTH_URL: 'http://localhost:3000',
         CORS_ORIGINS: '*',
       }),
     ).toThrow(/CORS_ORIGINS/);
@@ -208,7 +202,7 @@ describe('Products and stock ledger', () => {
   });
   test('AC29: editing a name preserves the existing stock threshold', async () => {
     await fixtures();
-    await Product.updateOne({ _id: productId }, { $set: { lowStockThreshold: 17 } });
+    await Product.setThreshold(productId, 17);
     const response = await request(app)
       .patch(`/api/products/${productId}`)
       .set(auth())
@@ -231,7 +225,7 @@ describe('Products and stock ledger', () => {
     );
     expect(responses.map((response) => response.status)).toEqual([201, 201]);
     expect((await Product.findById(productId))?.stock).toBe(5);
-    expect(await InventoryMovement.countDocuments({ type: 'receive' })).toBe(1);
+    expect(await InventoryMovement.count({ type: 'receive' })).toBe(1);
     expect(
       (
         await request(app)
@@ -258,7 +252,7 @@ describe('Products and stock ledger', () => {
       ).toBe(201);
     }
     expect((await Product.findById(productId))?.stock).toBe(7);
-    expect(await InventoryMovement.countDocuments({ productId, type: 'receive' })).toBe(1);
+    expect(await InventoryMovement.count({ productId, type: 'receive' })).toBe(1);
   });
 });
 describe('Order reservation and transitions', () => {
@@ -279,7 +273,7 @@ describe('Order reservation and transitions', () => {
     expect(response.body.subtotalPaise).toBe(54000);
     expect(response.body.items).toHaveLength(1);
     expect((await Product.findById(productId))?.stock).toBe(2);
-    expect(await InventoryMovement.countDocuments({ productId, type: 'reserve' })).toBe(1);
+    expect(await InventoryMovement.count({ productId, type: 'reserve' })).toBe(1);
     expect((await request(app).post('/api/orders').set(auth('staff')).send(payload())).status).toBe(
       403,
     );
@@ -314,8 +308,8 @@ describe('Order reservation and transitions', () => {
     expect(response.status).toBe(409);
     expect(response.body.error.code).toBe('INSUFFICIENT_STOCK');
     expect((await Product.findById(productId))?.stock).toBe(1);
-    expect(await Order.countDocuments()).toBe(0);
-    expect(await InventoryMovement.countDocuments()).toBe(0);
+    expect(await Order.count()).toBe(0);
+    expect(await InventoryMovement.count()).toBe(0);
   });
   test('AC17: simultaneous buyers cannot oversell the last unit', async () => {
     await fixtures(1);
@@ -325,8 +319,8 @@ describe('Order reservation and transitions', () => {
     ]);
     expect(responses.map((r) => r.status).sort()).toEqual([201, 409]);
     expect((await Product.findById(productId))?.stock).toBe(0);
-    expect(await Order.countDocuments()).toBe(1);
-    expect(await InventoryMovement.countDocuments({ type: 'reserve' })).toBe(1);
+    expect(await Order.count()).toBe(1);
+    expect(await InventoryMovement.count({ type: 'reserve' })).toBe(1);
   });
   test('AC18: concurrent idempotent retries reserve once and conflicting reuse is rejected', async () => {
     await fixtures(3);
@@ -339,7 +333,7 @@ describe('Order reservation and transitions', () => {
     expect(responses.map((r) => r.status)).toEqual([201, 201]);
     expect(responses[0]?.body._id).toBe(responses[1]?.body._id);
     expect((await Product.findById(productId))?.stock).toBe(2);
-    expect(await Order.countDocuments()).toBe(1);
+    expect(await Order.count()).toBe(1);
     expect(
       (
         await request(app)
@@ -365,7 +359,7 @@ describe('Order reservation and transitions', () => {
     );
     expect(responses.map((r) => r.status).sort()).toEqual([200, 409]);
     expect((await Product.findById(productId))?.stock).toBe(2);
-    expect(await InventoryMovement.countDocuments({ type: 'restock' })).toBe(1);
+    expect(await InventoryMovement.count({ type: 'restock' })).toBe(1);
   });
   test('AC20: staff responses contain no prices, customer phone, or revenue', async () => {
     await fixtures();

@@ -1,9 +1,7 @@
 import { lazy, Suspense } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Routes, Route, NavLink, Navigate, Link } from 'react-router-dom';
-import { signOut } from 'firebase/auth';
-import { useSession } from './lib/session';
-import { auth } from './lib/firebase';
+import { signOut, useSession } from './lib/session';
 import { api } from './lib/api';
 import type { Me } from './lib/types';
 import { Icon, State } from './components/ui';
@@ -64,7 +62,7 @@ function Workspace() {
         <button
           className="button secondary"
           onClick={() => {
-            if (auth) void signOut(auth);
+            void signOut();
           }}
         >
           Sign out
@@ -79,7 +77,7 @@ function Workspace() {
         <button
           className="button primary"
           onClick={() => {
-            if (auth) void signOut(auth);
+            void signOut();
           }}
         >
           Sign out
@@ -137,7 +135,7 @@ function Workspace() {
           <button
             className="signout"
             onClick={() => {
-              if (auth) void signOut(auth);
+              void signOut();
             }}
           >
             <Icon name="logout" /> Sign out

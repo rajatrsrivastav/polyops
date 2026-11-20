@@ -2,7 +2,7 @@ import { GoogleGenAI } from '@google/genai';
 import { z } from 'zod';
 import { randomUUID } from 'node:crypto';
 import type { Logger } from 'pino';
-import { AiBrief } from '../models';
+import { AiBrief } from '../db/store';
 import { dashboard, type Dashboard } from './dashboard';
 import type { Actor } from '../middleware/auth';
 import { AppError, isDuplicate } from '../lib/appError';
@@ -70,20 +70,35 @@ function fallback(source: Source) {
       : [],
   };
 }
+function present(brief: {
+  headline: string;
+  bullets: string[];
+  risks: string[];
+  provider: 'gemini' | 'template';
+  week: string;
+  source: unknown;
+  cached: boolean;
+}) {
+  return brief;
+}
 export async function weeklyBrief(actor: Actor, logger: Logger) {
   const week = weekKey();
-  const filter = { shopId: actor.shopId, week };
-  const cached = await AiBrief.findOne(filter).lean();
-  if (cached?.state === 'ready') return { ...cached, cached: true };
+  const cached = await AiBrief.findByWeek(actor.shopId, week);
+  if (cached?.state === 'ready')
+    return present({
+      headline: cached.headline,
+      bullets: cached.bullets,
+      risks: cached.risks,
+      provider: cached.provider,
+      week: cached.week,
+      source: cached.source,
+      cached: true,
+    });
   const source = briefSource(await dashboard(actor, '7d'));
   const leaseId = randomUUID();
   const leaseExpiresAt = new Date(Date.now() + 30000);
   if (cached) {
-    const claimed = await AiBrief.findOneAndUpdate(
-      { ...filter, state: 'building', leaseExpiresAt: { $lt: new Date() } },
-      { $set: { leaseId, leaseExpiresAt, source } },
-      { returnDocument: 'after' },
-    );
+    const claimed = await AiBrief.claim(actor.shopId, week, leaseId, leaseExpiresAt, source);
     if (!claimed)
       throw new AppError(
         409,
@@ -92,8 +107,9 @@ export async function weeklyBrief(actor: Actor, logger: Logger) {
       );
   } else {
     try {
-      await AiBrief.create({
-        ...filter,
+      await AiBrief.insert({
+        shopId: actor.shopId,
+        week,
         state: 'building',
         leaseId,
         leaseExpiresAt,
@@ -137,32 +153,33 @@ export async function weeklyBrief(actor: Actor, logger: Logger) {
       output = candidate;
       provider = 'gemini';
       logger.info(
-        { shopId: actor.shopId.toString(), tokens: result.usageMetadata?.totalTokenCount },
+        { shopId: actor.shopId, tokens: result.usageMetadata?.totalTokenCount },
         'Weekly brief generated',
       );
     } catch (error) {
       logger.warn(
         {
-          shopId: actor.shopId.toString(),
+          shopId: actor.shopId,
           errorType: error instanceof Error ? error.name : 'UnknownError',
         },
         'Weekly brief used template fallback',
       );
     }
   }
-  const saved = await AiBrief.findOneAndUpdate(
-    { ...filter, leaseId, state: 'building' },
-    {
-      $set: { ...output, source, provider, state: 'ready' },
-      $unset: { leaseId: '', leaseExpiresAt: '' },
-    },
-    { returnDocument: 'after' },
-  ).lean();
+  const saved = await AiBrief.finish(actor.shopId, week, leaseId, { ...output, source, provider });
   if (!saved)
     throw new AppError(
       409,
       'BRIEF_GENERATING',
       'The brief was refreshed by another request. Try again.',
     );
-  return { ...saved, cached: false };
+  return present({
+    headline: saved.headline,
+    bullets: saved.bullets,
+    risks: saved.risks,
+    provider: saved.provider,
+    week: saved.week,
+    source: saved.source,
+    cached: false,
+  });
 }

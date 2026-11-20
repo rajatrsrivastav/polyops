@@ -4,16 +4,18 @@ import helmet from 'helmet';
 import cors from 'cors';
 import { pinoHttp } from 'pino-http';
 import { rateLimit } from 'express-rate-limit';
-import mongoose from 'mongoose';
 import { AppError } from './lib/appError';
 import { createLogger } from './lib/logger';
 import { errorHandler } from './middleware/errorHandler';
 import { apiRouter } from './routes';
+import { handleAuthRequest } from './lib/auth';
+import { pingDatabase } from './db/pool';
 export type AppOptions = {
   corsOrigins: string[];
   logLevel: string;
   trustProxyHops: number;
   rateLimitMax?: number;
+  mountAuth?: boolean;
 };
 export function createApp(options: AppOptions) {
   const app = express();
@@ -55,9 +57,9 @@ export function createApp(options: AppOptions) {
         if (!origin || options.corsOrigins.includes(origin)) callback(null, true);
         else callback(new AppError(403, 'CORS_DENIED', 'This origin is not allowed'));
       },
+      exposedHeaders: ['set-auth-token'],
     }),
   );
-  app.use(express.json({ limit: '100kb' }));
   app.use(
     rateLimit({
       windowMs: 15 * 60 * 1000,
@@ -74,14 +76,18 @@ export function createApp(options: AppOptions) {
       },
     }),
   );
+  if (options.mountAuth) {
+    app.use('/api/auth', (req, res, next) => {
+      void handleAuthRequest(req, res).catch(next);
+    });
+  }
+  app.use(express.json({ limit: '100kb' }));
   app.get('/health', (_req, res) => {
     res.json({ ok: true, ts: new Date().toISOString() });
   });
   app.get('/ready', async (_req, res) => {
     try {
-      if (!mongoose.connection.db || mongoose.connection.readyState !== 1)
-        throw new Error('Database disconnected');
-      await mongoose.connection.db.admin().ping();
+      await pingDatabase();
       res.json({ ok: true });
     } catch {
       throw new AppError(503, 'NOT_READY', 'Database is not ready');

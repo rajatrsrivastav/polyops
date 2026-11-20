@@ -1,20 +1,4 @@
 services:
-  mongo:
-    image: mongo:7
-    command: ["mongod", "--replSet", "rs0", "--bind_ip_all"]
-    ports:
-      - "127.0.0.1:${MONGO_HOST_PORT:-27017}:27017"
-    volumes:
-      - mongo-data:/data/db
-    healthcheck:
-      test:
-        - CMD-SHELL
-        - >-
-          mongosh --quiet --eval 'try { const s = rs.status(); quit(s.myState === 1 ? 0 : 1); } catch (e) { rs.initiate({_id:"rs0",members:[{_id:0,host:"mongo:27017"}]}); quit(1); }'
-      interval: 5s
-      timeout: 5s
-      retries: 30
-      start_period: 10s
   api:
     profiles: ["api"]
     build: ./server
@@ -23,17 +7,11 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3000
-      MONGO_URI: mongodb://mongo:27017/packbay?replicaSet=rs0
-      FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID:-}
-      FIREBASE_CLIENT_EMAIL: ${FIREBASE_CLIENT_EMAIL:-}
-      FIREBASE_PRIVATE_KEY: ${FIREBASE_PRIVATE_KEY:-}
+      DATABASE_URL: ${DATABASE_URL:-}
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-}
+      BETTER_AUTH_URL: ${BETTER_AUTH_URL:-}
       CORS_ORIGINS: ${CORS_ORIGINS:-}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       GEMINI_MODEL: ${GEMINI_MODEL:-}
       LOG_LEVEL: info
       TRUST_PROXY_HOPS: 0
-    depends_on:
-      mongo:
-        condition: service_healthy
-volumes:
-  mongo-data:

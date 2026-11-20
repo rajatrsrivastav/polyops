@@ -1,66 +1,44 @@
-import mongoose from 'mongoose';
-import { getAuth } from 'firebase-admin/auth';
 import { readConfig } from '../../src/config';
-import { initFirebase } from '../../src/lib/firebase';
+import { connectDatabase, disconnectDatabase, query, transaction } from '../../src/db/pool';
+import { ensureSchema } from '../../src/db/schema';
 import { createLogger } from '../../src/lib/logger';
-import { Shop, User, Product, Order, InventoryMovement, Counter, AiBrief } from '../../src/models';
+import { AiBrief, Counter, InventoryMovement, Order, Product, Shop, User } from '../../src/models';
+import { deleteAuthUser, disableAuthUser } from '../../src/services/identity';
 const logger = createLogger();
+const db = { query };
 async function run() {
   const slug = process.argv.find((arg) => arg.startsWith('--shop='))?.slice(7);
   if (!slug || !process.argv.includes(`--confirm=${slug}`))
-    throw new Error(
-      'Use --shop=slug --confirm=slug after a backup and a verified deletion request',
-    );
+    throw new Error('Use --shop=slug --confirm=slug after a backup and a verified deletion request');
   const config = readConfig(process.env);
-  initFirebase(config);
-  await mongoose.connect(config.MONGO_URI);
+  await connectDatabase(config.DATABASE_URL);
   try {
-    const shop = await Shop.findOne({ slug });
+    await ensureSchema();
+    const shop = await Shop.findBySlug(slug);
     if (!shop) throw new Error('Shop not found');
-    const users = await User.find({ shopId: shop._id }).lean();
-    // Disable identities before deleting business data. Any failure stops removal for operator review.
-    for (const user of users) {
-      try {
-        await getAuth().updateUser(user.firebaseUid, { disabled: true });
-      } catch (error) {
-        const code =
-          typeof error === 'object' && error !== null && 'code' in error ? error.code : '';
-        if (code !== 'auth/user-not-found') throw error;
-      }
-    }
-    await mongoose.connection.transaction(async (session) => {
-      for (const remove of [
-        () => Product.deleteMany({ shopId: shop._id }, { session }),
-        () => Order.deleteMany({ shopId: shop._id }, { session }),
-        () => InventoryMovement.deleteMany({ shopId: shop._id }, { session }),
-        () => Counter.deleteMany({ shopId: shop._id }, { session }),
-        () => AiBrief.deleteMany({ shopId: shop._id }, { session }),
-      ])
-        await remove();
+    const users = await User.findByShop(shop._id);
+    for (const user of users) await disableAuthUser(db, user.authUserId);
+    await transaction(async (tx) => {
+      await Product.deleteByShop(shop._id, tx);
+      await Order.deleteByShop(shop._id, tx);
+      await InventoryMovement.deleteByShop(shop._id, tx);
+      await Counter.deleteByShop(shop._id, tx);
+      await AiBrief.deleteByShop(shop._id, tx);
     });
-    // Keep User + Shop records until all remote deletions succeed, so rerunning is safe.
-    for (const user of users) {
-      try {
-        await getAuth().deleteUser(user.firebaseUid);
-      } catch (error) {
-        const code =
-          typeof error === 'object' && error !== null && 'code' in error ? error.code : '';
-        if (code !== 'auth/user-not-found') throw error;
-      }
-    }
-    await mongoose.connection.transaction(async (session) => {
-      await User.deleteMany({ shopId: shop._id }, { session });
-      await Shop.deleteOne({ _id: shop._id }, { session });
+    for (const user of users) await deleteAuthUser(db, user.authUserId);
+    await transaction(async (tx) => {
+      await User.deleteByShop(shop._id, tx);
+      await Shop.deleteById(shop._id, tx);
     });
     logger.info('Shop and identities removed. Apply the documented backup expiry policy.');
   } finally {
-    await mongoose.disconnect();
+    await disconnectDatabase();
   }
 }
 void run().catch((error) => {
   logger.error(
     { errorType: error instanceof Error ? error.name : 'UnknownError' },
-    'Deletion stopped; keep the request open and review Firebase and backup state',
+    'Deletion stopped; keep the request open and review auth accounts and backup state',
   );
   process.exitCode = 1;
 });

@@ -21,10 +21,9 @@ const originList = z
   );
 const schema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
-  MONGO_URI: z.string().regex(/^mongodb(?:\+srv)?:\/\//),
-  FIREBASE_PROJECT_ID: z.string().min(1),
-  FIREBASE_CLIENT_EMAIL: z.email(),
-  FIREBASE_PRIVATE_KEY: z.string().min(1),
+  DATABASE_URL: z.string().regex(/^postgres(?:ql)?:\/\//),
+  BETTER_AUTH_SECRET: z.string().min(32),
+  BETTER_AUTH_URL: z.url(),
   GEMINI_API_KEY: z.string().optional(),
   GEMINI_MODEL: z.string().optional(),
   SENTRY_DSN: z.url().optional(),
