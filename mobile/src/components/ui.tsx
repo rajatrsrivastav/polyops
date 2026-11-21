@@ -1,50 +1,46 @@
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { ReactNode } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
-export const colors = {
-  ink: '#1B3A4B',
-  paper: '#F6F4EF',
-  amber: '#E8A838',
-  muted: '#52666D',
-  line: '#D5DED7',
-};
+import { colors } from './theme';
+export { colors } from './theme';
+export const displayFamily = Platform.select({ ios: 'Georgia', android: 'serif', default: 'Georgia' });
 export const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.paper },
-  content: { padding: 20, gap: 20, flexGrow: 1 },
-  heading: { fontSize: 30, fontWeight: '600', color: colors.ink },
+  content: { padding: 16, gap: 14, flexGrow: 1 },
+  heading: { fontFamily: displayFamily, fontSize: 32, color: colors.ink, letterSpacing: -0.9 },
   sub: { color: colors.muted, fontSize: 16, lineHeight: 24 },
   eyebrow: { fontSize: 12, letterSpacing: 2, color: colors.muted, fontWeight: '600' },
   card: {
-    backgroundColor: '#FFF',
+    backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.line,
-    borderRadius: 12,
-    padding: 20,
+    borderRadius: 4,
+    padding: 15,
     gap: 12,
   },
-  title: { color: colors.ink, fontSize: 19, fontWeight: '600' },
+  title: { color: colors.ink, fontSize: 17, fontWeight: '600' },
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
   input: {
-    borderColor: '#AABAB4',
+    borderColor: '#A69F95',
     borderWidth: 1,
-    borderRadius: 8,
+    borderRadius: 4,
     padding: 14,
     minHeight: 50,
     fontSize: 16,
     color: colors.ink,
-    backgroundColor: '#FFF',
+    backgroundColor: colors.surface,
   },
-  label: { fontSize: 16, color: colors.ink, marginBottom: 8 },
+  label: { fontSize: 14, fontWeight: '600', color: colors.ink, marginBottom: 7 },
   error: {
     color: '#92362E',
     fontSize: 16,
     padding: 14,
     backgroundColor: '#FFF0EB',
-    borderRadius: 8,
+    borderRadius: 4,
   },
   button: {
     minHeight: 50,
-    borderRadius: 8,
+    borderRadius: 4,
     paddingHorizontal: 20,
     paddingVertical: 14,
     justifyContent: 'center',
@@ -52,7 +48,7 @@ export const styles = StyleSheet.create({
     backgroundColor: colors.ink,
   },
   buttonText: { fontSize: 16, color: '#FFF', fontWeight: '600' },
-  secondary: { backgroundColor: '#FFF', borderColor: colors.line, borderWidth: 1 },
+  secondary: { backgroundColor: colors.surface, borderColor: colors.line, borderWidth: 1 },
   secondaryText: { color: colors.ink },
   disabled: { opacity: 0.5 },
   badge: {
@@ -66,14 +62,31 @@ export const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   divider: { height: 1, backgroundColor: colors.line, marginVertical: 8 },
+  intro: { gap: 5, paddingTop: 3, paddingBottom: 13, borderBottomWidth: 1, borderBottomColor: colors.line },
+  foot: { backgroundColor: colors.surface, borderTopColor: colors.line, borderTopWidth: 1, padding: 12, gap: 8 },
+  pair: { flex: 1, gap: 3 },
+  caption: { color: colors.muted, fontSize: 13, lineHeight: 18 },
+  amount: { color: colors.ink, fontWeight: '800', fontSize: 19, fontVariant: ['tabular-nums'] },
+  chip: { backgroundColor: colors.wash, color: colors.accent, borderRadius: 4, paddingHorizontal: 8, paddingVertical: 5, fontWeight: '700', overflow: 'hidden', alignSelf: 'flex-start' },
 });
-export function Screen({ children }: { children: ReactNode }) {
+export function Screen({ children, footer, top }: { children: ReactNode; footer?: ReactNode; top?: boolean }) {
   return (
-    <SafeAreaView style={styles.screen} edges={['bottom', 'left', 'right']}>
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        {children}
-      </ScrollView>
+    <SafeAreaView style={styles.screen} edges={top ? ['top', 'bottom', 'left', 'right'] : ['bottom', 'left', 'right']}>
+      <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
+          {children}
+        </ScrollView>
+        {footer ? <View style={styles.foot}>{footer}</View> : null}
+      </KeyboardAvoidingView>
     </SafeAreaView>
+  );
+}
+export function PageIntro({ title, description }: { title: string; description?: string }) {
+  return (
+    <View style={styles.intro}>
+      <Text accessibilityRole="header" style={styles.heading}>{title}</Text>
+      {description ? <Text style={styles.sub}>{description}</Text> : null}
+    </View>
   );
 }
 export function Button({
@@ -108,7 +121,7 @@ export function Loading() {
   return (
     <View style={styles.card} accessibilityRole="progressbar">
       <ActivityIndicator color={colors.ink} />
-      <Text style={styles.sub}>Loading your packing desk…</Text>
+      <Text style={styles.sub}>Loading factory operations…</Text>
     </View>
   );
 }

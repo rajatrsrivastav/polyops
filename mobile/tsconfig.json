@@ -1,1 +1,16 @@
-{"extends":"expo/tsconfig.base","compilerOptions":{"strict":true,"noEmit":true,"noUncheckedIndexedAccess":true,"noUnusedLocals":true,"noUnusedParameters":true},"include":["src/**/*.ts","src/**/*.tsx","expo-env.d.ts"]}
+{
+  "extends": "expo/tsconfig.base",
+  "compilerOptions": {
+    "strict": true,
+    "noEmit": true,
+    "noUncheckedIndexedAccess": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true
+  },
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "expo-env.d.ts",
+    ".expo/types/**/*.ts"
+  ]
+}
