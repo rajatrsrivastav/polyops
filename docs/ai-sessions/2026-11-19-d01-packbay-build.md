@@ -1250,3 +1250,31 @@ The transcript's original wording for that bullet was “Tech guys in Andheri ca
 **What I learned:** _Rajat to fill_
 
 **Interview note:** _Rajat to fill_
+
+### Task 38 — Render backend deployment
+
+> render plugin use it to deplyed i have autheticated it
+
+Used the Render deploy skill to prepare render.yaml for the public PolyOps repository. It uses the server Docker context, free web plan, generated auth secret and /ready probe. Git status confirmed the submission branch. Deployment is pending publication of the Blueprint and private configuration in Render.
+
+Files changed: render.yaml and this log. Git diff --check and local YAML parse passed.
+
+Accepted / rejected and why: _Rajat to fill_
+
+What I learned: _Rajat to fill_
+
+Interview note: _Rajat to fill_
+
+### Task 39 — Publish the Render Blueprint
+
+> fine
+
+Rajat authorized publishing the Blueprint and session log to PolyOps. Fetched the current main branch and based the deployment commit on it. Local YAML parsing and git diff --check passed. Private service configuration and a public readiness check are pending.
+
+Files changed: render.yaml and this log.
+
+Accepted / rejected and why: _Rajat to fill_
+
+What I learned: _Rajat to fill_
+
+Interview note: _Rajat to fill_

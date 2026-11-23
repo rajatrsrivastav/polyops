@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: polyops-api
+    runtime: docker
+    plan: free
+    repo: https://github.com/rajatrsrivastav/polyops
+    branch: main
+    dockerfilePath: ./server/Dockerfile
+    dockerContext: ./server
+    healthCheckPath: /ready
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: BETTER_AUTH_SECRET
+        generateValue: true
+      - key: BETTER_AUTH_URL
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
