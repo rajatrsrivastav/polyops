@@ -1,3 +1,5 @@
-# Packbay API
+# PolyOps API
 
-See ../README.md for setup and ../docs/api-contract.md for routes. `npm run check` runs lint, strict TypeScript, real-Mongo tests and a production build. app.ts exports an app factory without listen; index.ts validates environment, initializes Firebase, connects Mongo and starts HTTP. Services own business logic. Scripts require privately supplied environment values and never load the old root environment file.
+The Express API manages material stock, buyer order reservations and dispatch for a plastics factory. Better Auth handles sign-in and Postgres stores factory-scoped records. The weekly brief uses aggregate operational figures.
+
+Run `npm run check` from this directory for lint, strict TypeScript checks, PGlite integration tests and a production build. The seed supports a quick synthetic factory dataset with eight materials and fourteen buyer orders. Reseeding replaces the existing demo workspace’s data. See the [setup guide](../README.md) and [API contract](../docs/api-contract.md).

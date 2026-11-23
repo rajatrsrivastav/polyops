@@ -58,10 +58,10 @@ export function Pager({ page, limit, total, change }: {
 }
 
 const s = StyleSheet.create({
-  search: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line, borderRadius: 4 },
+  search: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.line, borderRadius: 12 },
   input: { flex: 1, minHeight: 48, paddingHorizontal: 12, color: colors.ink, fontSize: 16 },
   searchButton: { width: 48, minHeight: 48, justifyContent: 'center', alignItems: 'center' },
   material: { flexDirection: 'row', alignItems: 'center', padding: 12, gap: 9 },
-  icon: { width: 38, height: 38, backgroundColor: colors.wash, alignItems: 'center', justifyContent: 'center', borderRadius: 4 },
+  icon: { width: 38, height: 38, backgroundColor: colors.wash, alignItems: 'center', justifyContent: 'center', borderRadius: 12 },
   stock: { alignItems: 'flex-end' },
 });

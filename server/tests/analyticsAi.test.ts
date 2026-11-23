@@ -22,7 +22,7 @@ const app = createApp({
   rateLimitMax: 10000,
 });
 async function fixture() {
-  const shop = await Shop.create({ name: 'Millet & Co.', slug: 'millet-co', isDemo: true });
+  const shop = await Shop.create({ name: 'PolyOps Demo Works', slug: 'millet-co', isDemo: true });
   const owner = await User.create({
     authUserId: 'owner',
     shopId: shop._id,
@@ -91,7 +91,7 @@ describe('Weekly brief grounding and cache', () => {
     await Product.create({
       shopId: actor.shopId,
       sku: 'TEST',
-      name: 'Demo cookies',
+      name: 'Demo granules',
       stock: 0,
       pricePaise: 100,
     });
@@ -177,7 +177,7 @@ describe('Weekly brief grounding and cache', () => {
     expect(second.status).toBe(409);
     release({
       text: JSON.stringify({
-        headline: 'Shop snapshot',
+        headline: 'Factory snapshot',
         bullets: ['Review stock.', 'Check orders.', 'Prepare parcels.'],
         risks: [],
       }),

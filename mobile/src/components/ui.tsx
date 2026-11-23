@@ -3,27 +3,26 @@ import type { ReactNode } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from './theme';
 export { colors } from './theme';
-export const displayFamily = Platform.select({ ios: 'Georgia', android: 'serif', default: 'Georgia' });
 export const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.paper },
   content: { padding: 16, gap: 14, flexGrow: 1 },
-  heading: { fontFamily: displayFamily, fontSize: 32, color: colors.ink, letterSpacing: -0.9 },
+  heading: { fontWeight: '700', fontSize: 32, color: colors.ink, letterSpacing: -0.9 },
   sub: { color: colors.muted, fontSize: 16, lineHeight: 24 },
   eyebrow: { fontSize: 12, letterSpacing: 2, color: colors.muted, fontWeight: '600' },
   card: {
     backgroundColor: colors.surface,
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
     borderColor: colors.line,
-    borderRadius: 4,
+    borderRadius: 16,
     padding: 15,
     gap: 12,
   },
   title: { color: colors.ink, fontSize: 17, fontWeight: '600' },
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
   input: {
-    borderColor: '#A69F95',
+    borderColor: colors.line,
     borderWidth: 1,
-    borderRadius: 4,
+    borderRadius: 12,
     padding: 14,
     minHeight: 50,
     fontSize: 16,
@@ -36,11 +35,11 @@ export const styles = StyleSheet.create({
     fontSize: 16,
     padding: 14,
     backgroundColor: '#FFF0EB',
-    borderRadius: 4,
+    borderRadius: 12,
   },
   button: {
     minHeight: 50,
-    borderRadius: 4,
+    borderRadius: 12,
     paddingHorizontal: 20,
     paddingVertical: 14,
     justifyContent: 'center',
@@ -54,7 +53,7 @@ export const styles = StyleSheet.create({
   badge: {
     color: '#7D510D',
     backgroundColor: '#FFF0D2',
-    borderRadius: 5,
+    borderRadius: 10,
     paddingVertical: 5,
     paddingHorizontal: 9,
     textTransform: 'capitalize',
@@ -62,16 +61,16 @@ export const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   divider: { height: 1, backgroundColor: colors.line, marginVertical: 8 },
-  intro: { gap: 5, paddingTop: 3, paddingBottom: 13, borderBottomWidth: 1, borderBottomColor: colors.line },
-  foot: { backgroundColor: colors.surface, borderTopColor: colors.line, borderTopWidth: 1, padding: 12, gap: 8 },
+  intro: { gap: 5, paddingTop: 3, paddingBottom: 4 },
+  foot: { backgroundColor: colors.surface, borderTopColor: colors.line, borderTopWidth: StyleSheet.hairlineWidth, padding: 12, gap: 8 },
   pair: { flex: 1, gap: 3 },
   caption: { color: colors.muted, fontSize: 13, lineHeight: 18 },
-  amount: { color: colors.ink, fontWeight: '800', fontSize: 19, fontVariant: ['tabular-nums'] },
-  chip: { backgroundColor: colors.wash, color: colors.accent, borderRadius: 4, paddingHorizontal: 8, paddingVertical: 5, fontWeight: '700', overflow: 'hidden', alignSelf: 'flex-start' },
+  amount: { color: colors.ink, fontWeight: '700', fontSize: 19, fontVariant: ['tabular-nums'] },
+  chip: { backgroundColor: colors.wash, color: colors.accent, borderRadius: 12, paddingHorizontal: 8, paddingVertical: 5, fontWeight: '700', overflow: 'hidden', alignSelf: 'flex-start' },
 });
 export function Screen({ children, footer, top }: { children: ReactNode; footer?: ReactNode; top?: boolean }) {
   return (
-    <SafeAreaView style={styles.screen} edges={top ? ['top', 'bottom', 'left', 'right'] : ['bottom', 'left', 'right']}>
+    <SafeAreaView style={styles.screen} edges={top ? ['top', 'bottom', 'left', 'right'] : ['left', 'right']}>
       <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
           {children}

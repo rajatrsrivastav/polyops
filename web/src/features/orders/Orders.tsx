@@ -6,6 +6,15 @@ import { api } from '../../lib/api';
 import type { Order, Product, Page, Status } from '../../lib/types';
 import { money, dateTime, retryKey } from '../../lib/format.mjs';
 import { Badge, Icon, Modal, Notice, Pager, PageTitle, State } from '../../components/ui';
+const orderSources = [
+  ['purchase_order', 'Purchase order'],
+  ['phone', 'Phone'],
+  ['email', 'Email'],
+  ['other', 'Other'],
+] as const;
+function sourceLabel(value: string) {
+  return orderSources.find(([code]) => code === value)?.[1] ?? 'Historical source';
+}
 function CreateOrder({ close }: { close: () => void }) {
   const [lines, setLines] = useState([{ productId: '', qty: 1 }]);
   const key = useRef<{ payload: string; key: string } | null>(null);
@@ -47,7 +56,7 @@ function CreateOrder({ close }: { close: () => void }) {
             )
             .min(1)
             .max(50),
-          channel: z.enum(['instagram', 'whatsapp', 'website', 'other']),
+          channel: z.enum(orderSources.map(([code]) => code)),
           customerName: z.string().min(1).max(100),
           customerPhone: z.string().regex(/^[6-9]\d{9}$/),
         })
@@ -66,15 +75,15 @@ function CreateOrder({ close }: { close: () => void }) {
     0,
   );
   return (
-    <Modal title="A new parcel in the making" close={close}>
+    <Modal title="New buyer order" close={close}>
       <form className="form-stack" onSubmit={submit}>
         <div className="form-row">
           <label>
-            Customer name
+            Buyer name
             <input name="name" required maxLength={100} autoComplete="off" />
           </label>
           <label>
-            Customer phone
+            Buyer contact phone
             <input
               name="phone"
               inputMode="tel"
@@ -87,12 +96,11 @@ function CreateOrder({ close }: { close: () => void }) {
           </label>
         </div>
         <label>
-          Order channel
+          Order source
           <select name="channel">
-            <option value="instagram">Instagram</option>
-            <option value="whatsapp">WhatsApp</option>
-            <option value="website">Website</option>
-            <option value="other">Other</option>
+            {orderSources.map(([code, label]) => (
+              <option key={code} value={code}>{label}</option>
+            ))}
           </select>
         </label>
         <label>
@@ -226,7 +234,7 @@ function OrderDetail({ id, close }: { id: string; close: () => void }) {
               <div>
                 <h3>{order.customerName}</h3>
                 <p>
-                  {order.customerPhone} · {order.channel}
+                  {order.customerPhone} · {sourceLabel(order.channel)}
                 </p>
                 <p className="muted">{dateTime(order.createdAt)}</p>
               </div>
@@ -249,7 +257,7 @@ function OrderDetail({ id, close }: { id: string; close: () => void }) {
               <span>Subtotal</span>
               <strong>{money(order.subtotalPaise)}</strong>
             </div>
-            <h3 className="section-gap">Parcel history</h3>
+            <h3 className="section-gap">Dispatch history</h3>
             <ol className="timeline">
               {order.statusHistory.map((entry, index) => (
                 <li key={index}>
@@ -268,7 +276,7 @@ function OrderDetail({ id, close }: { id: string; close: () => void }) {
                   onClick={() => {
                     if (
                       to !== 'cancelled' ||
-                      window.confirm('Cancel this order and return its stock to the shelf?')
+                      window.confirm('Cancel this order and release its reserved stock?')
                     )
                       mutation.mutate(to);
                   }}
@@ -310,9 +318,9 @@ export function Orders() {
   return (
     <>
       <PageTitle
-        eyebrow="FROM YOUR SHOP TO THEIR DOOR"
-        title="Every order, in order."
-        description="Follow each parcel from the first hello to a happy delivery."
+        eyebrow="DISPATCH"
+        title="Buyer orders"
+        description="Reserve stock for buyer orders and track shipments through delivery."
         action={
           <button className="button primary" onClick={() => setParams({ new: '1' })}>
             <Icon name="plus" /> Create order
@@ -333,8 +341,8 @@ export function Orders() {
             <input
               name="q"
               type="search"
-              aria-label="Find order or customer"
-              placeholder="Order code or customer"
+              aria-label="Find order or buyer"
+              placeholder="Order code or buyer"
               maxLength={100}
             />
           </label>
@@ -384,8 +392,8 @@ export function Orders() {
               <thead>
                 <tr>
                   <th>Order</th>
-                  <th>Customer</th>
-                  <th>Channel</th>
+                  <th>Buyer</th>
+                  <th>Order source</th>
                   <th>Subtotal</th>
                   <th>Status</th>
                   <th>Received</th>
@@ -403,7 +411,7 @@ export function Orders() {
                       {order.customerName}
                       <small>{order.items.reduce((sum, line) => sum + line.qty, 0)} units</small>
                     </td>
-                    <td className="capitalize">{order.channel}</td>
+                    <td className="capitalize">{sourceLabel(order.channel)}</td>
                     <td>{money(order.subtotalPaise)}</td>
                     <td>
                       <Badge status={order.status} />

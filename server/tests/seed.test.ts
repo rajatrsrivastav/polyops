@@ -66,9 +66,13 @@ test('quick demo seed creates a smaller catalog and one week of orders', async (
   process.env.DEMO_OWNER_UID = 'synthetic-owner';
   process.env.DEMO_STAFF_ONE_UID = 'synthetic-staff-one';
   process.env.DEMO_STAFF_TWO_UID = 'synthetic-staff-two';
+  await Shop.create({ name: 'Previous demo factory', slug: 'millet-co', isDemo: true });
   await seed({ quick: true });
   const shop = await Shop.findBySlug('millet-co');
   expect(shop?.isDemo).toBe(true);
+  expect(shop?.name).toBe('PolyOps Demo Works');
+  const materials = await Product.findByShop(shop?._id ?? '');
+  expect(materials.map((material) => material.name)).toContain('HDPE Natural Granules');
   expect(await Product.countByShop(shop?._id ?? '')).toBe(8);
   expect(await Order.count(shop?._id ?? '')).toBe(14);
 });

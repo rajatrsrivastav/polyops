@@ -32,7 +32,7 @@ export async function api<T>(
     throw new ApiError(
       0,
       'NETWORK',
-      'We could not reach your shop. Check your connection and retry.',
+      'We could not reach the factory workspace. Check your connection and retry.',
     );
   }
   if (response.status === 204) return undefined as T;

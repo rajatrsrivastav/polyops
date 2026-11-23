@@ -24,9 +24,9 @@ export function Dashboard() {
   return (
     <>
       <PageTitle
-        eyebrow="YOUR SHOP, AT A GLANCE"
-        title="Room for a good day."
-        description="A clear view of what’s selling and what needs a little attention."
+        eyebrow="FACTORY OPERATIONS"
+        title="Factory overview"
+        description="Review buyer orders, stock alerts and the dispatch queue."
         action={
           <Link className="button primary" to="/orders?new=1">
             <Icon name="plus" /> Create order
@@ -68,11 +68,11 @@ export function Dashboard() {
                 {
                   title: 'Units ordered',
                   value: data.summary.units,
-                  caption: 'Little things, adding up',
+                  caption: 'Across non-cancelled orders',
                   icon: 'box',
                 },
                 {
-                  title: 'Ready for attention',
+                  title: 'Awaiting dispatch',
                   value: data.summary.pendingCount,
                   caption: 'Pending & packed, all dates',
                   icon: 'check',
@@ -93,7 +93,7 @@ export function Dashboard() {
                 <div className="panel-heading">
                   <div>
                     <h2>Sales, day by day</h2>
-                    <p className="muted">Every parcel is part of the story.</p>
+                    <p className="muted">Value of non-cancelled orders by order date.</p>
                   </div>
                   <span className="chart-legend">Sales in ₹</span>
                 </div>
@@ -145,8 +145,8 @@ export function Dashboard() {
               <section className="panel low-stock">
                 <div className="panel-heading">
                   <div>
-                    <span className="label-pill amber">A LITTLE HEADS-UP</span>
-                    <h2>Running a little low</h2>
+                    <span className="label-pill amber">STOCK ALERTS</span>
+                    <h2>Low stock</h2>
                   </div>
                   <Icon name="box" />
                 </div>
@@ -174,7 +174,7 @@ export function Dashboard() {
               <section className="panel">
                 <div className="panel-heading">
                   <div>
-                    <h2>The crowd favourites</h2>
+                    <h2>Most ordered products</h2>
                     <p className="muted">Your most ordered products.</p>
                   </div>
                   <Link className="text-link" to="/products">
@@ -206,24 +206,22 @@ export function Dashboard() {
                     </table>
                   </div>
                 ) : (
-                  <p className="state compact">Create your first order to see your favourites.</p>
+                  <p className="state compact">Product rankings appear when orders are recorded.</p>
                 )}
               </section>
               <section className="brief-teaser">
                 <span className="spark-tile">
                   <Icon name="spark" size={28} />
                 </span>
-                <p className="eyebrow">LESS GUESSWORK. MORE CLARITY.</p>
+                <p className="eyebrow">OPERATIONS REPORT</p>
                 <h2>
-                  Your week,
-                  <br />
-                  with a fresh perspective.
+                  Weekly factory brief
                 </h2>
-                <p>A grounded weekly brief, made from your shop’s numbers.</p>
+                <p>Review seven days of orders and stock alerts.</p>
                 <Link className="button secondary" to="/brief">
                   Read my weekly brief
                 </Link>
-                <small>Only aggregate shop data. Never customer details.</small>
+                <small>Uses factory totals and excludes buyer contact details.</small>
               </section>
             </div>
           </>

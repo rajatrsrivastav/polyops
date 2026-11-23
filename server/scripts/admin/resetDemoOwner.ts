@@ -24,7 +24,7 @@ export async function resetDemoOwner(password: string) {
     );
     const id = owner.rows[0]?.auth_user_id;
     if (owner.rows.length !== 1 || typeof id !== 'string')
-      throw new RecoveryError('The seeded Millet & Co. demo owner was not found.');
+      throw new RecoveryError('The seeded factory demo owner was not found.');
     const result = await tx.query(
       `UPDATE "account" SET password = $2, "updatedAt" = now()
        WHERE "userId" = $1 AND "accountId" = $1 AND "providerId" = 'credential'`,

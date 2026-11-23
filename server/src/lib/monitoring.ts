@@ -14,7 +14,7 @@ export function initMonitoring() {
       platform: 'node',
       level: 'error',
       release: event.release,
-      message: 'Packbay API internal failure',
+      message: 'PolyOps API internal failure',
       tags: {
         requestId: event.tags?.requestId ?? 'unknown',
         errorType: event.tags?.errorType ?? 'UnknownError',
@@ -24,7 +24,7 @@ export function initMonitoring() {
 }
 export function reportInternalError(requestId: string, error: unknown) {
   if (!process.env.SENTRY_DSN) return;
-  Sentry.captureMessage('Packbay API internal failure', {
+  Sentry.captureMessage('PolyOps API internal failure', {
     level: 'error',
     tags: { requestId, errorType: error instanceof Error ? error.name : 'UnknownError' },
   });

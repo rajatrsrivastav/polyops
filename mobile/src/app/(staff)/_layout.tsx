@@ -1,3 +1,5 @@
+import { View } from 'react-native';
+import { FactoryDock } from '../../features/desk/FactoryDock';
 import { Redirect, Stack } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { api, type FactoryProfile } from '../../lib/api';
@@ -38,19 +40,23 @@ export default function StaffLayout() {
       </Screen>
     );
   return (
-    <Stack
-      screenOptions={{
-        headerStyle: { backgroundColor: colors.paper },
-        headerTintColor: colors.ink,
-        headerShadowVisible: false,
-      }}
-    >
-      <Stack.Screen name="index" options={{ headerShown: false }} />
-      <Stack.Screen name="orders/[id]" options={{ title: 'Dispatch details' }} />
-      <Stack.Screen name="receive" options={{ title: 'Material stock' }} />
-      <Stack.Screen name="dispatch" options={{ title: 'Buyer dispatch' }} />
-      <Stack.Screen name="movements/[id]" options={{ title: 'Stock movements' }} />
-      <Stack.Screen name="admin" options={{ headerShown: false }} />
-    </Stack>
+    <View style={{ flex: 1, backgroundColor: colors.paper }}>
+      <Stack
+        screenOptions={{
+          headerStyle: { backgroundColor: colors.paper },
+          headerTintColor: colors.ink,
+          headerShadowVisible: false,
+        }}
+      >
+        <Stack.Screen name="index" options={{ headerShown: false }} />
+        <Stack.Screen name="orders/[id]" options={{ title: 'Dispatch details' }} />
+        <Stack.Screen name="receive" options={{ title: 'Material stock' }} />
+        <Stack.Screen name="dispatch" options={{ title: 'Buyer dispatch' }} />
+        <Stack.Screen name="movements/[id]" options={{ title: 'Stock movements' }} />
+        <Stack.Screen name="more" options={{ title: 'More' }} />
+        <Stack.Screen name="admin" options={{ headerShown: false }} />
+      </Stack>
+      <FactoryDock />
+    </View>
   );
 }

@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { randomUUID } from 'expo-crypto';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -9,10 +9,17 @@ import { Field, MaterialPicker } from '../../../features/admin/Controls';
 import { money, useMaterials, type Material } from '../../../features/admin/data';
 
 type Line = { material: Material; quantity: string };
+const orderSources = {
+  purchase_order: 'Purchase order',
+  email: 'Email',
+  phone: 'Phone',
+  other: 'Other',
+} as const;
+type OrderSource = keyof typeof orderSources;
 type OrderInput = {
   customerName: string;
   customerPhone: string;
-  channel: 'other';
+  channel: OrderSource;
   items: { productId: string; qty: number }[];
 };
 
@@ -21,6 +28,7 @@ export default function NewOrder() {
   const client = useQueryClient();
   const [buyer, setBuyer] = useState('');
   const [phone, setPhone] = useState('');
+  const [source, setSource] = useState<OrderSource>('other');
   const [picking, setPicking] = useState(false);
   const [lines, setLines] = useState<Line[]>([]);
   const [validation, setValidation] = useState<Error | null>(null);
@@ -66,7 +74,7 @@ export default function NewOrder() {
     const body: OrderInput = {
       customerName: buyer.trim(),
       customerPhone: phone.trim(),
-      channel: 'other',
+      channel: source,
       items: lines.map(({ material, quantity }) => ({ productId: material._id, qty: Number(quantity) })),
     };
     const fingerprint = JSON.stringify(body);
@@ -99,6 +107,17 @@ export default function NewOrder() {
         <Text accessibilityRole="header" style={styles.title}>Buyer details</Text>
         <Field label="Buyer or company name" value={buyer} onChangeText={setBuyer} maxLength={100} editable={!mutation.isPending} />
         <Field label="Buyer mobile number" value={phone} onChangeText={setPhone} keyboardType="phone-pad" maxLength={10} editable={!mutation.isPending} />
+        <Text style={styles.label}>Order source</Text>
+        <View accessibilityRole="radiogroup" accessibilityLabel="Order source" style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+          {(Object.keys(orderSources) as OrderSource[]).map((value) => (
+            <Pressable key={value} accessibilityRole="radio" accessibilityLabel={orderSources[value]}
+              accessibilityState={{ checked: source === value, disabled: mutation.isPending }}
+              disabled={mutation.isPending} onPress={() => setSource(value)}
+              style={[styles.button, source !== value && styles.secondary]}>
+              <Text style={[styles.buttonText, source !== value && styles.secondaryText]}>{orderSources[value]}</Text>
+            </Pressable>
+          ))}
+        </View>
       </View>
       <Text accessibilityRole="header" style={styles.title}>Materials · {lines.length}</Text>
       {lines.map(({ material, quantity }) => (
