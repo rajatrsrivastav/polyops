@@ -1,3 +1,4 @@
+import { orderChannels } from '../db/store';
 import { Router } from 'express';
 import { rateLimit } from 'express-rate-limit';
 import { z } from 'zod';
@@ -54,7 +55,7 @@ const orderBody = z
       .array(z.object({ productId: objectId, qty: z.number().int().min(1).max(999) }).strict())
       .min(1)
       .max(50),
-    channel: z.enum(['instagram', 'whatsapp', 'website', 'other']),
+    channel: z.enum(orderChannels),
     customerName: z.string().trim().min(1).max(100),
     customerPhone: z.string().regex(/^[6-9]\d{9}$/, 'Use a ten-digit Indian mobile number'),
   })

@@ -56,8 +56,9 @@ export default function Dispatch() {
     setPage(1);
   }
   return (
-    <SafeAreaView style={styles.screen} edges={['bottom', 'left', 'right']}>
+    <SafeAreaView style={styles.screen} edges={['left', 'right']}>
       <FlatList
+        keyboardDismissMode="on-drag"
         keyboardShouldPersistTaps="handled"
         data={query.data?.items ?? []}
         keyExtractor={(item) => item._id}
@@ -120,6 +121,7 @@ export default function Dispatch() {
         }
         renderItem={({ item }) => {
           const current = orderStatus(item.status);
+          const units = item.items.reduce((sum, line) => sum + line.qty, 0);
           return (
             <Pressable accessibilityRole="button" accessibilityLabel={`Open ${item.code}, ${item.customerName}, ${current.label}`}
               onPress={() => router.push({ pathname: '/orders/[id]', params: { id: item._id } })}
@@ -132,7 +134,7 @@ export default function Dispatch() {
                 <Text style={[styles.chip, { color: current.text, backgroundColor: current.fill }]}>{current.label}</Text>
               </View>
               <View style={styles.row}>
-                <Text style={styles.caption}>{item.items.reduce((sum, line) => sum + line.qty, 0)} units · {item.items.length} material lines</Text>
+                <Text style={styles.caption}>{units} {units === 1 ? 'unit' : 'units'} · {item.items.length} {item.items.length === 1 ? 'material' : 'materials'}</Text>
                 <DeskIcon name="chevron" color={colors.muted} size={16} />
               </View>
             </Pressable>
@@ -147,7 +149,7 @@ export default function Dispatch() {
 const s = StyleSheet.create({
   dateToggle: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 44 },
   filters: { gap: 8 },
-  filter: { minHeight: 44, borderRadius: 4, paddingHorizontal: 13, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.surface, justifyContent: 'center' },
+  filter: { minHeight: 44, borderRadius: 22, paddingHorizontal: 16, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.line, backgroundColor: colors.surface, justifyContent: 'center' },
   filterActive: { backgroundColor: colors.accent, borderColor: colors.accent },
   filterText: { color: colors.ink, fontWeight: '700' },
   filterTextActive: { color: colors.surface },

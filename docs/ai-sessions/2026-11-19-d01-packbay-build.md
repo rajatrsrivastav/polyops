@@ -1099,3 +1099,154 @@ The transcript's original wording for that bullet was “Tech guys in Andheri ca
 **What I learned:** _Rajat to fill_
 
 **Interview note:** _Rajat to fill_
+
+### Task 35 — Persistent mobile navigation
+
+> i want bottom floading navigatio bar it shound be gone while swithc the pages on the nviagtion its hsould hight on thaht page shoing the bottom nav bar also and also fix more such thing ame kit amordern as per the apple ui practices follwed in ios app create multi agent to complte it make and feel more mordern ad have putten effot not a ai slop which it looks lie curentl y
+
+**Response summary:** Moved the dock into the authenticated layout, highlighted the active section, and moved order creation into the owner’s desk actions. Two agents worked on navigation and desk design. Updated shared controls, order filters and report typography.
+
+**Files changed:** Staff layout, desk, dispatch, More, reports, sign-in, shared UI, inventory controls, FactoryDock and this log.
+
+**Commands and results:** Mobile lint, typecheck and three mobile tests passed. Expo exported the iOS bundle. git diff --check passed.
+
+**Open risks and follow-ups:** No simulator was available for a visual check. Verify the dock, keyboard and bottom clearance on the physical iPhone.
+
+**Accepted / rejected and why:** _Rajat to fill_
+
+**What I learned:** _Rajat to fill_
+
+**Interview note:** _Rajat to fill_
+
+### Task 36 — Factory buyer orders, materials and dispatch
+
+> | &#x20; |
+> | ------ |
+>
+> | &#x20; |
+> | ------ |
+>
+> touh we haev pivot form packday pleae
+>
+> | &#x20; |
+> | ------ |
+>
+>
+>
+> | &#x20; |
+> | ------ |
+>
+> dont mentioniit its a pp for b2b factory ops
+>
+> | &#x20; |
+> | ------ |
+>
+>
+>
+> | &#x20; |
+> | ------ |
+>
+> not d2c online store please makes
+>
+> | &#x20; |
+> | ------ |
+>
+>
+>
+> | &#x20; |
+> | ------ |
+>
+> changes as per the pivot with nothing
+>
+> | &#x20; |
+> | ------ |
+>
+>
+>
+> | &#x20; |
+> | ------ |
+>
+> wrong mention and run mutli agent to pivot
+>
+> | &#x20; |
+> | ------ |
+>
+>
+>
+> | &#x20; |
+> | ------ |
+>
+> impltaion fast thing and reserach and then
+>
+> | &#x20; |
+> | ------ |
+>
+> analtyisis and hten implt
+>
+> | &#x20; |
+> | ------ |
+>
+>
+>
+> 12:25 AM • Ø
+>
+>
+>
+> I'll audit the app, demo data, and setup docs for retail language, check how the factory workflows map to inventory and dispatch, then update and test the affected paths.
+>
+> - ﻿﻿• Mobilepivot, Serverpivot, and Docpivot started working v
+> - ﻿﻿Mobilepivot started working
+>
+> • Serverpivot started working
+>
+>
+>
+> \* Docpivot started working
+>
+>
+>
+> Sent message to Serverpivot
+>
+> - ﻿﻿Sent message to Mobilepivot
+
+**Response summary:** Codex and three agents audited the clients, server and docs. The prior factory and stack decisions supplied the implementation context. Updated factory terminology, buyer order sources, guarded demo fixtures and operational documentation. Checked warehouse reservation terminology against [Microsoft Business Central documentation](https://learn.microsoft.com/en-gb/dynamics365/business-central/design-details-availability-in-the-warehouse).
+
+**Files changed:**
+
+- .github/workflows/ci.yml AGENTS.md README.md package.json scripts/load/orders.js
+- docs/adr/{0001-stack,0002-stock-reservation,0003-mongo-roles,0007-hosting}.md
+- docs/{api-contract,architecture,data-model,demo,feedback-log,figma,implementation-status,interview-prep,prd,privacy,runbook}.md and this session log
+- mobile/{README.md,package.json,package-lock.json,src/app/(staff)/admin/newOrder.tsx}
+- server/{README.md,package.json,package-lock.json,scripts/seed.ts,scripts/admin/resetDemoOwner.ts,src/db/schema.ts,src/db/store.ts,src/index.ts,src/lib/monitoring.ts,src/routes/index.ts,src/services/ai.ts,tests/analyticsAi.test.ts,tests/api.test.ts,tests/seed.test.ts,tests/session.test.ts}
+- web/{README.md,index.html,package.json,package-lock.json,src/App.tsx,src/features/auth/Login.tsx,src/features/brief/WeeklyBrief.tsx,src/features/dashboard/Dashboard.tsx,src/features/inventory/Inventory.tsx,src/features/orders/Orders.tsx,src/features/products/Products.tsx,src/lib/api.ts,src/lib/monitoring.ts}
+
+**Commands and results:** Server lint, typecheck and build passed. Supertest initially hit a sandbox loopback restriction. The first approved run revealed a wrong ID field in the new migration test. After correction all 47 tests passed across five suites. Web and mobile package checks passed, three tests each. Vite production build and Expo iOS export passed. Git whitespace validation passed after removing a trailing blank line.
+
+**Open risks and follow-ups:** Physical-device and live database verification remain open. An existing demo database shows its existing records until deliberately reseeded. Existing account identifiers and app installation identifiers were retained for compatibility.
+
+**Accepted / rejected and why:** _Rajat to fill_
+
+**What I learned:** _Rajat to fill_
+
+**Interview note:** _Rajat to fill_
+
+### Task 37 — Prepare the Android submission and publish the factory app
+
+> commit ipsuh and merge it to main branch
+
+> yes u do it and i want a .apk file and buidl file to be submited final submitinon phase need to makr it as complte and want to know while shoing the deomi will it also run uing ngrok or there is altertive prod thing to use while demo or anyone to demo also update readme according anda also still show wrong as attched ss of gihub text worn g is FactoryEase — offline-first Expo app for factory attendance, expenses, invoices & challans\
+> \
+
+**Response summary:** Rajat authorized publishing the current product and mobile navigation changes. Updated the GitHub About field and the README's reviewer instructions. Selected the EAS preview environment explicitly for the preview APK.
+
+**Files changed for release preparation:** README.md, mobile/eas.json and this log, alongside the previously recorded product and navigation changes.
+
+**Commands and results:** Git status and branch inspection located the PolyOps checkout at 1341bfa. The configured origin pointed to a different repository. GitHub API confirmed the PolyOps main revision and verified the corrected description after gh repo edit. GitHub listed no deployments or repository variables.
+
+**Open risks and follow-ups:** A verified public API origin is needed for a usable reviewer build. Verify APK installation, reviewer sign-in and portal acceptance before marking submission complete.
+
+**Accepted / rejected and why:** _Rajat to fill_
+
+**What I learned:** _Rajat to fill_
+
+**Interview note:** _Rajat to fill_

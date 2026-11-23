@@ -36,7 +36,7 @@ export async function seed(
     const current = await Shop.findBySlug('millet-co');
     if (current && !current.isDemo) throw new Error('Refusing to modify a non-demo shop');
     const shop =
-      current ?? (await Shop.create({ name: 'Millet & Co.', slug: 'millet-co', isDemo: true }));
+      current ?? (await Shop.create({ name: 'PolyOps Demo Works', slug: 'millet-co', isDemo: true }));
     if (
       (await User.countOutsideShop(
         [env.DEMO_OWNER_UID, env.DEMO_STAFF_ONE_UID, env.DEMO_STAFF_TWO_UID],
@@ -46,6 +46,9 @@ export async function seed(
       throw new Error('A demo identity belongs to another shop');
     report('Replacing demo shop data and provisioning demo sign-in accounts');
     await transaction(async (tx) => {
+      await tx.query("UPDATE shops SET name = $1, updated_at = now() WHERE id = $2 AND is_demo", [
+        'PolyOps Demo Works', shop._id,
+      ]);
       await User.deleteByShop(shop._id, tx);
       await Product.deleteByShop(shop._id, tx);
       await Order.deleteByShop(shop._id, tx);
@@ -57,21 +60,21 @@ export async function seed(
       {
         id: env.DEMO_OWNER_UID,
         email: 'owner@millet.example',
-        name: 'Millet owner',
+        name: 'Factory owner',
         password: env.DEMO_OWNER_PASSWORD,
         role: 'owner' as const,
       },
       {
         id: env.DEMO_STAFF_ONE_UID,
         email: 'packer-one@millet.example',
-        name: 'Packer one',
+        name: 'Dispatch operator one',
         password: env.DEMO_STAFF_ONE_PASSWORD,
         role: 'staff' as const,
       },
       {
         id: env.DEMO_STAFF_TWO_UID,
         email: 'packer-two@millet.example',
-        name: 'Packer two',
+        name: 'Dispatch operator two',
         password: env.DEMO_STAFF_TWO_PASSWORD,
         role: 'staff' as const,
       },
@@ -103,27 +106,29 @@ export async function seed(
       authUserId: owner.authUserId,
     };
     const names = [
-      'Ragi Cookies',
-      'Jowar Puffs',
-      'Millet Granola',
-      'Bajra Crackers',
-      'Little Millet Mix',
-      'Foxtail Breakfast',
-      'Ragi Brownie Mix',
-      'Kodo Trail Mix',
-      'Barnyard Flour',
-      'Amaranth Laddoo',
-      'Sesame Bites',
-      'Cocoa Millet Bars',
-      'Moringa Crackers',
-      'Peanut Chikki',
-      'Coconut Cookies',
-      'Date Energy Bites',
-      'Spiced Jowar',
-      'Honey Granola',
-      'Roasted Millet',
-      'Family Snack Box',
+      'HDPE Natural Granules',
+      'PP Black Granules',
+      'PET Clear Flakes',
+      'LDPE Film Regrind',
+      'PP Copolymer Granules',
+      'HDPE Blue Regrind',
+      'ABS Black Granules',
+      'PET Green Flakes',
+      'LDPE Natural Granules',
+      'LLDPE Film Granules',
+      'PP White Regrind',
+      'HDPE Black Granules',
+      'ABS Natural Regrind',
+      'PET Blue Flakes',
+      'PP Grey Granules',
+      'HIPS White Regrind',
+      'HDPE Drum Regrind',
+      'PC Clear Regrind',
+      'PP Raffia Granules',
+      'LDPE Black Granules',
     ];
+    const buyers = ['Demo Pipe Works', 'Demo Moulding Works', 'Demo Film Industries'];
+    const channels = ['purchase_order', 'phone', 'email'] as const;
     const selectedNames = options.quick ? names.slice(0, 8) : names;
     const days = options.quick ? 7 : 60;
     const totalOrders = days * 2;
@@ -133,7 +138,7 @@ export async function seed(
       const product = await Product.create({
         shopId: shop._id,
         name,
-        sku: `MC-${String(index + 1).padStart(3, '0')}`,
+        sku: `POLY-${String(index + 1).padStart(3, '0')}`,
         pricePaise: 12000 + index * 1500,
         lowStockThreshold: 20,
       });
@@ -150,11 +155,13 @@ export async function seed(
       for (let slot = 0; slot < 2; slot++) {
         const index = (day * 7 + slot * 3) % catalog.length;
         const product = catalog[index];
-        if (!product) throw new Error('Seed catalog missing');
+        const customerName = buyers[(day + slot) % buyers.length];
+        const channel = channels[(day + slot) % channels.length];
+        if (!product || !customerName || !channel) throw new Error('Seed fixture missing');
         const order = await createOrder(actor, {
           items: [{ productId: product.id, qty: 1 + ((day + slot) % 2) }],
-          channel: slot ? 'whatsapp' : 'instagram',
-          customerName: `Demo Customer ${String(day * 2 + slot + 1).padStart(3, '0')}`,
+          channel,
+          customerName,
           customerPhone: '9999999999',
         });
         const cancelled = day % 13 === 0 && day > 0;

@@ -11,9 +11,9 @@ export function WeeklyBrief() {
   return (
     <>
       <PageTitle
-        eyebrow="A MOMENT TO SEE THE BIGGER PICTURE"
-        title="Your week, made clearer."
-        description="A short brief grounded in your last seven days. Customer details stay out of it."
+        eyebrow="FACTORY REPORTING"
+        title="Weekly operations brief"
+        description="Review order volume and stock alerts for the last seven days."
       />
       <div className="brief-layout">
         <section className="panel brief-content">
@@ -50,12 +50,10 @@ export function WeeklyBrief() {
           ) : (
             <>
               <h2>
-                A fresh perspective,
-                <br />
-                from numbers you can trust.
+                Generate a weekly report
               </h2>
               <p>
-                We gather non-cancelled sales, popular products, and low stock into a short weekly
+                We gather non-cancelled sales, top products, and low stock into a short weekly
                 note. If AI is unavailable, you’ll receive a clear template summary.
               </p>
               <button
@@ -71,7 +69,7 @@ export function WeeklyBrief() {
         </section>
         <aside className="panel">
           <h2>Behind the brief</h2>
-          <p className="muted">Aggregate shop data only. One saved brief per shop, per week.</p>
+          <p className="muted">Each factory has one saved brief per week, generated from aggregate figures.</p>
           {brief ? (
             <dl className="source-numbers">
               <div>

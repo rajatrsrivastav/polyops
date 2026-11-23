@@ -27,39 +27,34 @@ export function Login() {
           <span className="brand-mark">
             <Icon name="box" size={28} />
           </span>
-          packbay<span className="brand-period">.</span>
+          PolyOps<span className="brand-period">.</span>
         </Link>
         <div>
-          <p className="eyebrow">SMALL SHOP. BIG PLANS.</p>
+          <p className="eyebrow">FACTORY OPERATIONS</p>
           <h1>
-            A little order.
-            <br /> A lot more
-            <br />
-            <em>possibility.</em>
+            Orders, stock
+            <br /> and <em>dispatch.</em>
           </h1>
           <p>
-            Your products, orders, and packing team.
-            <br />
-            One calm place to keep things moving.
+            Track buyer orders, check available stock and prepare shipments.
           </p>
           <div className="parcel-art" aria-hidden="true">
             <div className="parcel">
-              <span>MILLET & CO.</span>
+              <span>POLYOPS DEMO WORKS</span>
               <i />
-              <b>packed with care</b>
+              <b>Dispatch label</b>
             </div>
             <div className="parcel-note">
-              <Icon name="check" /> Ready for your next chapter
+              <Icon name="check" /> Ready for dispatch
             </div>
           </div>
         </div>
-        <p className="story-foot">Made for the people behind the parcels.</p>
       </section>
       <section className="login-form">
         <div className="login-card">
           <span className="label-pill">OWNER WORKSPACE</span>
           <h2>Welcome back.</h2>
-          <p className="muted">Let’s make room for a good day.</p>
+          <p className="muted">Sign in to the factory dashboard.</p>
           {!configured && (
             <div className="setup-note" role="status">
               <strong>Your workspace needs connecting.</strong>
@@ -73,7 +68,7 @@ export function Login() {
                 name="email"
                 type="email"
                 autoComplete="username"
-                placeholder="you@yourshop.com"
+                placeholder="you@example.com"
                 required
                 disabled={!configured}
               />
@@ -100,15 +95,14 @@ export function Login() {
             </button>
           </form>
           <p className="login-help">
-            Access is set up by your shop administrator.
+            Access is set up by your factory administrator.
             <br />
-            Packing staff? Use the Packbay Staff app.
+            Factory staff can sign in on the PolyOps mobile app.
           </p>
           <Link className="privacy-link" to="/privacy">
             Privacy & your data
           </Link>
         </div>
-        <p className="login-footer">A clear desk. A fresh start. Packbay.</p>
       </section>
     </main>
   );

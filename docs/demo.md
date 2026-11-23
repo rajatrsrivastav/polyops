@@ -1,13 +1,9 @@
-# Demo script
+# Factory walkthrough
 
-Use synthetic Millet & Co. data only. A demo account is not shipped with hardcoded credentials: configure Firebase and provide the three demo UIDs before seeding.
+Use the isolated synthetic demo factory. Follow the root README to seed it and sign in on the phone.
 
-1. Owner signs in on web. Show products, period sales and low-stock alerts.
-2. Create a two-product order. Note the code, DB-derived prices and reserved stock.
-3. Staff refreshes today’s list on the phone and opens the order. Confirm financial values and customer phone are absent.
-4. Mark packed, then shipped. Owner sees the updated state on refresh.
-5. Create a second order, cancel it as owner, and show the matching restock movements.
-6. Prepare a weekly brief. Show source numbers, provider label, and the second cached response. If Gemini is unconfigured the template is intentional.
-7. Show AC17 concurrency, AC18 retries and AC22 time-zone test source. Explain that the automated counts are not pilot usage.
-
-Do not promise a production URL, APK, measured latency, real sellers or features that have not been delivered. Deployment and phone smoke testing require the operator’s configuration.
+1. As admin, create a material grade with zero stock. Receive 10 whole units and record the supplier delivery reference.
+2. Place a buyer order for 3 units. The available stock should now read 7. Open the movement history to see the receipt and reservation.
+3. As staff, open the order, check its grade and quantity, mark it packed and record dispatch. The available balance stays at 7 because the reservation was recorded at order creation.
+4. As admin, place a second order for 2 units, then cancel it. Verify the balance returns from 5 to 7 and that the ledger shows one release.
+5. Inspect the admin report for the period. The cancelled order is excluded from sales. Staff order details omit prices and buyer phone numbers.

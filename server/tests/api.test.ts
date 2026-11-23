@@ -1,3 +1,5 @@
+import { ensureSchema } from '../src/db/schema';
+import { query } from '../src/db/pool';
 import { markTestDatabaseClosed, reconnectTestDatabase } from './setup';
 import request from 'supertest';
 import { createApp } from '../src/app';
@@ -15,7 +17,7 @@ const app = createApp({
 let shopId: string;
 let productId: string;
 async function fixtures(stock = 3) {
-  const shop = await Shop.create({ name: 'Millet & Co.', slug: 'millet-co', isDemo: true });
+  const shop = await Shop.create({ name: 'PolyOps Demo Works', slug: 'millet-co', isDemo: true });
   shopId = shop.id;
   await User.createMany([
     { authUserId: 'owner-uid', shopId, role: 'owner', email: 'owner@example.test' },
@@ -23,8 +25,8 @@ async function fixtures(stock = 3) {
   ]);
   const product = await Product.create({
     shopId,
-    sku: 'RAGI-01',
-    name: 'Ragi Cookies',
+    sku: 'HDPE-01',
+    name: 'HDPE Granules',
     pricePaise: 18000,
     stock,
     lowStockThreshold: 2,
@@ -37,8 +39,8 @@ function auth(role = 'owner') {
 function payload(qty = 1) {
   return {
     items: [{ productId, qty }],
-    channel: 'instagram' as const,
-    customerName: 'Demo Customer',
+    channel: 'purchase_order' as const,
+    customerName: 'Demo Moulding Works',
     customerPhone: '9999999999',
   };
 }
@@ -68,7 +70,7 @@ describe('API foundation', () => {
     const response = await request(app).get('/health').set('Origin', 'http://localhost:5173');
     expect(response.headers['access-control-allow-origin']).toBe('http://localhost:5173');
   });
-  test('AC4: readiness pings the real Mongo replica set', async () => {
+  test('AC4: readiness pings the connected Postgres database', async () => {
     expect((await request(app).get('/ready')).status).toBe(200);
   });
   test('AC28: liveness stays up while disconnected and readiness returns 503', async () => {
@@ -195,7 +197,7 @@ describe('Products and stock ledger', () => {
     const response = await request(app)
       .post('/api/products')
       .set(auth())
-      .send({ name: 'Other', sku: 'RAGI-01', pricePaise: 100, lowStockThreshold: 2 });
+      .send({ name: 'Other', sku: 'HDPE-01', pricePaise: 100, lowStockThreshold: 2 });
     expect(response.status).toBe(409);
     expect(response.body.error.code).toBe('DUPLICATE_SKU');
     expect((await request(app).get('/api/products?q=%5B').set(auth())).status).toBe(200);
@@ -206,7 +208,7 @@ describe('Products and stock ledger', () => {
     const response = await request(app)
       .patch(`/api/products/${productId}`)
       .set(auth())
-      .send({ name: 'Fresh Ragi Cookies' });
+      .send({ name: 'HDPE Blue Granules' });
     expect(response.status).toBe(200);
     expect(response.body.lowStockThreshold).toBe(17);
     expect(response.body.stock).toBe(3);
@@ -388,4 +390,22 @@ describe('Order reservation and transitions', () => {
     ).toBe(200);
     expect((await Product.findById(productId))?.stock).toBe(3);
   });
+});
+
+
+test('existing order sources survive the upgrade and factory buyer orders accept each new source', async () => {
+  await fixtures(5);
+  await query(`ALTER TABLE orders DROP CONSTRAINT orders_source_check,
+    ADD CONSTRAINT orders_channel_check CHECK (channel IN ('instagram','whatsapp','website','other'))`);
+  const legacy = await request(app).post('/api/orders').set(auth())
+    .send({ ...payload(), channel: 'instagram' }).expect(201);
+  await ensureSchema();
+  await ensureSchema();
+  const saved = await Order.findInShop(legacy.body._id, shopId);
+  expect(saved?.channel).toBe('instagram');
+  for (const channel of ['purchase_order', 'phone', 'email']) {
+    const order = await request(app).post('/api/orders').set(auth())
+      .send({ ...payload(), channel }).expect(201);
+    expect(order.body.channel).toBe(channel);
+  }
 });

@@ -1,6 +1,6 @@
 # ADR 0003: Mongo roles after Firebase verification
 
-Date: 19 November 2026. Status: implemented AI draft, awaiting Rajat review.
+Date: 19 November 2026. Historical decision. For current technology and deployment decisions see [Architecture](../architecture.md) and the [operating runbook](../runbook.md).
 
 ## Context
 

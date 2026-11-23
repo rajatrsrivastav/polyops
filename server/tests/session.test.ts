@@ -12,7 +12,7 @@ const app = createApp({
 });
 const db = { query };
 async function provision(email: string, password: string, withAppUser: boolean) {
-  const shop = await Shop.create({ name: 'Millet & Co.', slug: `shop-${email}`, isDemo: true });
+  const shop = await Shop.create({ name: 'PolyOps Demo Works', slug: `shop-${email}`, isDemo: true });
   const authUserId = await insertAuthUser(db, { email, name: 'Demo', password });
   if (withAppUser) {
     await User.create({ authUserId, shopId: shop._id, role: 'owner', email });

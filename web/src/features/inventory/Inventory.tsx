@@ -29,7 +29,7 @@ function Ledger({ product, close }: { product: Product; close: () => void }) {
                   {item.type === 'reserve' ? '−' : '+'}
                   {item.qty} units
                 </strong>
-                <small>{item.balanceAfter} on shelf after</small>
+                <small>{item.balanceAfter} units after movement</small>
               </div>
             </li>
           ))}
@@ -51,9 +51,9 @@ export function Inventory() {
   return (
     <>
       <PageTitle
-        eyebrow="KEEP GOOD THINGS IN STOCK"
-        title="A place for every pack."
-        description="Receive fresh deliveries and see the story behind every stock change."
+        eyebrow="WAREHOUSE"
+        title="Inventory"
+        description="Record receipts and review stock movements by SKU."
       />
       <section className="panel">
         <div className="toolbar">
@@ -76,7 +76,7 @@ export function Inventory() {
               <thead>
                 <tr>
                   <th>Product</th>
-                  <th>On shelf</th>
+                  <th>Available</th>
                   <th>Alert at</th>
                   <th>Stock health</th>
                   <th>Actions</th>

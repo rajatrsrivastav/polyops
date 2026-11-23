@@ -13,7 +13,7 @@ if (import.meta.env.VITE_SENTRY_DSN) {
       platform: 'javascript',
       level: 'error',
       release: event.release,
-      message: 'Packbay client rendering failure',
+      message: 'PolyOps client rendering failure',
     }),
   });
 }

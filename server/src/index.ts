@@ -23,7 +23,7 @@ async function main() {
     mountAuth: true,
   });
   const server = app.listen(config.PORT, '0.0.0.0', () => {
-    logger.info({ port: config.PORT }, 'Packbay API listening');
+    logger.info({ port: config.PORT }, 'PolyOps API listening');
   });
   let stopping = false;
   const shutdown = () => {
@@ -58,7 +58,7 @@ void main().catch((error) => {
         ? error.message
         : 'Startup failed; check database access and auth configuration',
     },
-    'Packbay could not start',
+    'PolyOps could not start',
   );
   process.exit(1);
 });

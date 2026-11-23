@@ -2,11 +2,11 @@
 
 On 19 November 2026 Rajat explicitly authorized Codex to author all parts, including the reserved sections. The current baseline and docs are AI-authored. This overrides the review-only and human-doc-authoring restrictions for this implementation, not the secret or Git-write restrictions. Current session log: docs/ai-sessions/2026-11-19-d01-packbay-build.md. Future tasks should respect the remaining playbook rules and record actual authorship.
 
-# AGENTS.md — Packbay
+# AGENTS.md — PolyOps
 ## What this project is
-Packbay is an ops desk for a small D2C / Instagram-shop brand (demo brand: "Millet & Co.").
-- Owner uses a React web dashboard: products, orders, inventory, sales analytics, AI weekly brief.
-- Packing staff use an Expo app: today's pick list, pack/ship orders, receive stock.
+PolyOps is a B2B factory operations app for a plastics supplier.
+- Factory admins manage material grades, buyer orders, available inventory, reports and the weekly brief in Expo.
+- Factory staff use Expo to receive material, pack buyer orders and record dispatch.
 Source of truth for scope and design: docs/prd.md, docs/architecture.md, docs/api-contract.md,
 docs/data-model.md, docs/adr/. If code and docs disagree, STOP and ask me. Do not silently pick one.
 ## Who you are working with
@@ -49,10 +49,9 @@ If you think a new dependency is needed, explain why and the alternatives, then 
   Never log tokens, passwords, phone numbers or full request bodies.
 - Names: files camelCase.ts, React components PascalCase.tsx, tests `*.test.ts` in `tests/`.
 ## Folder rules
-- server/src/routes: HTTP only. server/src/services: business logic. server/src/models: Mongoose
-  schemas + indexes only. server/src/middleware: auth, roles, validation, rate limit, errors.
+- server/src/routes: HTTP only. server/src/services: business logic. server/src/models: typed data access. server/src/db: Postgres schema and indexes. server/src/middleware: auth, roles, validation, rate limit, errors.
 - web/src/features/<feature>/ owns its components, hooks and API calls. Shared UI in web/src/components.
-- mobile/src/ mirrors the web feature names. Mobile never calls owner-only endpoints.
+- mobile/src/ mirrors the web feature names. Only authenticated owner workflows may call owner-only endpoints.
 - docs/ is human-owned. You may suggest edits, but do not change docs/adr/ or docs/prd.md unless
   I explicitly ask. The only docs you edit on your own are the session log (see below) and
   docs/decisions-log.md when I ask you to record a decision.
@@ -72,7 +71,7 @@ Do not rewrite them unless I say "rewrite <file>":
 - Never invent library APIs. If unsure an API exists in the installed version, say so and check
   node_modules or the package docs.
 - Never add analytics, tracking, telemetry or external network calls I did not ask for.
-- Never use real customer data in seeds, tests or examples. Use the Millet & Co. demo data.
+- Never use real customer data in seeds, tests or examples. Use synthetic factory materials and business buyers in the guarded demo tenant.
 - Never put the AI (Gemini) in the order, stock or auth path.
 - Never mark a task done if lint, typecheck or tests fail. Report the failure instead.
 ## Testing rules
@@ -82,7 +81,7 @@ Do not rewrite them unless I say "rewrite <file>":
 - Must-have cases: 401 no/invalid token; 403 wrong role; 400 Zod shape; 409 insufficient stock
   with stock unchanged; concurrent reserve does not oversell; 409 illegal status transition;
   aggregation totals match inserted orders; shop A cannot read shop B's data.
-- Tests must not call the network (no live Firebase, Gemini or Atlas).
+- Tests must not call the network (no live authentication service, Gemini or Neon).
 ## Session log (MANDATORY at the end of every task)
 I keep a markdown log of every Codex session in docs/ai-sessions/.
 - At the start of a session I will tell you the log file, e.g.

@@ -1,5 +1,5 @@
 import { useRef, useState, type ComponentRef } from 'react';
-import { Keyboard, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Keyboard, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Redirect } from 'expo-router';
 import { configured, signIn, useSession } from '../lib/session';
 import { colors, ErrorNotice, Loading, Screen } from '../components/ui';
@@ -111,19 +111,19 @@ const s = StyleSheet.create({
   shortStroke: { width: 7, height: 14, backgroundColor: colors.accent, alignSelf: 'flex-start', marginTop: 1 },
   context: { fontSize: 13, color: colors.muted },
   intro: { marginTop: 42, marginBottom: 29, gap: 10 },
-  heading: { color: colors.ink, fontFamily: Platform.select({ ios: 'Georgia', android: 'serif', default: 'Georgia, serif' }), fontSize: 44, letterSpacing: -1.7 },
+  heading: { color: colors.ink, fontWeight: '700', fontSize: 40, letterSpacing: -1.7 },
   lede: { maxWidth: 320, color: colors.muted, fontSize: 16, lineHeight: 23 },
   form: { gap: 18 },
   field: { gap: 7 },
   label: { color: colors.ink, fontSize: 14, fontWeight: '600' },
-  fieldBox: { backgroundColor: colors.surface, borderColor: colors.line, borderWidth: 1, borderRadius: 4 },
+  fieldBox: { backgroundColor: colors.surface, borderColor: colors.line, borderWidth: 1, borderRadius: 12 },
   focused: { borderColor: colors.accent },
   input: { minHeight: 51, paddingHorizontal: 12, paddingVertical: 11, color: colors.ink, fontSize: 17 },
   passwordRow: { flexDirection: 'row', alignItems: 'center' },
   password: { flex: 1 },
   toggle: { minHeight: 48, minWidth: 52, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 10 },
   toggleText: { color: colors.ink, fontSize: 14, fontWeight: '600' },
-  submit: { backgroundColor: colors.ink, minHeight: 51, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 4, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  submit: { backgroundColor: colors.ink, minHeight: 51, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   submitLabel: { fontSize: 16, fontWeight: '700', color: colors.surface },
   arrow: { color: colors.surface, fontSize: 22 },
   inactive: { backgroundColor: colors.muted },

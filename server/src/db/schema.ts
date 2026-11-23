@@ -1,4 +1,5 @@
 import { query, type Sql } from './pool';
+const channelCheck = "CHECK (channel IN ('purchase_order', 'phone', 'email', 'other', 'instagram', 'whatsapp', 'website'))";
 const statements = [
   `CREATE TABLE IF NOT EXISTS shops (
     id text PRIMARY KEY,
@@ -38,7 +39,7 @@ const statements = [
     shop_id text NOT NULL,
     code text NOT NULL,
     items jsonb NOT NULL,
-    channel text NOT NULL CHECK (channel IN ('instagram', 'whatsapp', 'website', 'other')),
+    channel text NOT NULL CONSTRAINT orders_source_check ${channelCheck},
     customer_name text NOT NULL CHECK (char_length(customer_name) <= 100),
     customer_phone text NOT NULL CHECK (char_length(customer_phone) <= 10),
     subtotal_paise integer NOT NULL CHECK (subtotal_paise >= 0),
@@ -50,6 +51,16 @@ const statements = [
     updated_at timestamptz NOT NULL DEFAULT now(),
     UNIQUE (shop_id, code)
   )`,
+  // Older installations have the automatically named constraint. Expand it atomically,
+  // preserving historical order sources and the ability to replay older clients' requests.
+  `DO $$ BEGIN
+    IF EXISTS (SELECT 1 FROM pg_constraint
+               WHERE conrelid = 'orders'::regclass AND conname = 'orders_channel_check') THEN
+      ALTER TABLE orders DROP CONSTRAINT IF EXISTS orders_channel_check,
+                         DROP CONSTRAINT IF EXISTS orders_source_check,
+                         ADD CONSTRAINT orders_source_check ${channelCheck};
+    END IF;
+  END $$`,
   // Optional idempotency keys need a partial unique index. A plain unique index would treat every missing key as equal.
   `CREATE UNIQUE INDEX IF NOT EXISTS orders_shop_idempotency_idx ON orders (shop_id, idempotency_key) WHERE idempotency_key IS NOT NULL`,
   `CREATE INDEX IF NOT EXISTS orders_shop_id_created_at_idx ON orders (shop_id, created_at DESC, id DESC)`,

@@ -56,7 +56,7 @@ export function ProductForm({ product, close }: { product?: Product; close: () =
   }
   return (
     <Modal
-      title={product ? 'A little product update' : 'Make room for a new product'}
+      title={product ? 'Edit product' : 'New product'}
       close={close}
     >
       <form onSubmit={submit} className="form-stack">
@@ -132,7 +132,7 @@ export function ReceiveForm({ product, close }: { product: Product; close: () =>
         }}
       >
         <p className="muted">
-          {product.stock} currently on the shelf. Each delivery is recorded in your stock ledger.
+          {product.stock} units available. Each delivery is recorded in your stock ledger.
         </p>
         <label>
           Units received
@@ -140,7 +140,7 @@ export function ReceiveForm({ product, close }: { product: Product; close: () =>
         </label>
         <label>
           Note (optional)
-          <input name="note" maxLength={200} placeholder="e.g. Fresh batch from supplier" />
+          <input name="note" maxLength={200} placeholder="e.g. Supplier delivery reference" />
         </label>
         <Notice error={mutation.error} />
         <button className="button primary" disabled={mutation.isPending}>
@@ -169,9 +169,9 @@ export function Products() {
   return (
     <>
       <PageTitle
-        eyebrow="THE THINGS YOU MAKE"
-        title="Your shelf, sorted."
-        description="A home for every product. Keep the details fresh and the shelves ready."
+        eyebrow="CATALOG"
+        title="Product catalog"
+        description="Manage product SKUs, unit prices and stock thresholds."
         action={
           <button className="button primary" onClick={() => setEdit('new')}>
             <Icon name="plus" /> Add product
@@ -208,7 +208,7 @@ export function Products() {
                 <tr>
                   <th>Product</th>
                   <th>Price</th>
-                  <th>On the shelf</th>
+                  <th>Available</th>
                   <th>Stock health</th>
                   <th>Actions</th>
                 </tr>

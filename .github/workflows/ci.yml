@@ -41,7 +41,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
-      - run: docker build -t packbay-api:ci server
+      - run: docker build -t polyops-api:ci server
   secrets:
     runs-on: ubuntu-latest
     steps:

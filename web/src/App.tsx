@@ -26,7 +26,7 @@ function Privacy() {
   return (
     <main className="privacy-page">
       <Link className="text-link" to="/">
-        Back to Packbay
+        Back to PolyOps
       </Link>
       <article>
         {privacy
@@ -72,8 +72,8 @@ function Workspace() {
   if (me.data.role !== 'owner')
     return (
       <main className="access-state">
-        <h1>Your packing desk is on mobile.</h1>
-        <p>Use the Packbay Staff app to pick, pack, ship, and receive stock.</p>
+        <h1>Your factory workspace is on mobile.</h1>
+        <p>Use the PolyOps mobile app to record factory work and dispatches.</p>
         <button
           className="button primary"
           onClick={() => {
@@ -101,7 +101,7 @@ function Workspace() {
           <span className="brand-mark">
             <Icon name="box" size={25} />
           </span>
-          packbay<span className="brand-period">.</span>
+          PolyOps<span className="brand-period">.</span>
         </Link>
         <div className="shop-label">
           <span className="shop-avatar">P</span>
@@ -121,14 +121,6 @@ function Workspace() {
           ))}
         </nav>
         <div className="sidebar-bottom">
-          <div className="sidebar-note">
-            <Icon name="box" />
-            <p>
-              Little details.
-              <br />
-              <strong>Smoother days.</strong>
-            </p>
-          </div>
           <Link to="/privacy" className="privacy-link">
             Privacy & data
           </Link>
@@ -173,8 +165,8 @@ function Workspace() {
             </Routes>
           </Suspense>
           <footer className="workspace-footer">
-            A little more organised. A little more room to grow.
-            <span>PACKBAY · YOUR DAILY DISPATCH</span>
+            Factory operations
+            <span>POLYOPS</span>
           </footer>
         </main>
       </div>

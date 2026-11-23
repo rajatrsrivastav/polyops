@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../../../lib/api';
-import { Button, displayFamily, ErrorNotice, Loading, PageIntro, Screen, colors, styles } from '../../../components/ui';
+import { Button, ErrorNotice, Loading, PageIntro, Screen, colors, styles } from '../../../components/ui';
 import { money, type Dashboard } from '../../../features/admin/data';
 
 const periods = [{ value: '7d', label: '7 days' }, { value: '30d', label: '30 days' }] as const;
@@ -113,9 +113,9 @@ function Segment({ label, selected, onPress }: { label: string; selected: boolea
 const s = StyleSheet.create({
   hero: { borderBottomColor: colors.line, borderBottomWidth: 1, paddingVertical: 14, gap: 5 },
   light: { color: colors.muted, fontSize: 14 },
-  figure: { color: colors.ink, fontFamily: displayFamily, fontSize: 35, fontVariant: ['tabular-nums'] },
-  segment: { flexDirection: 'row', gap: 7 },
-  tab: { flex: 1, minHeight: 44, alignItems: 'center', justifyContent: 'center', borderRadius: 4, backgroundColor: colors.surface, paddingHorizontal: 8, borderWidth: 1, borderColor: colors.line },
+  figure: { color: colors.ink, fontWeight: '600', fontSize: 35, fontVariant: ['tabular-nums'] },
+  segment: { flexDirection: 'row', backgroundColor: colors.wash, padding: 3, gap: 2, borderRadius: 14 },
+  tab: { flex: 1, minHeight: 44, alignItems: 'center', justifyContent: 'center', borderRadius: 11, paddingHorizontal: 8 },
   tabActive: { backgroundColor: colors.accent, borderColor: colors.accent },
   tabLabel: { color: colors.ink, fontSize: 14, textAlign: 'center', fontWeight: '700' },
   metrics: { flexDirection: 'row', alignItems: 'stretch', gap: 7 },

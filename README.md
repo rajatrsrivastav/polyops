@@ -4,7 +4,7 @@ PolyOps helps a plastics supplier answer a question before accepting an order: h
 
 For example, receiving ten units and reserving three leaves seven available for the next buyer. The movement history explains how that balance changed.
 
-Demo brand: **Millet & Co.**
+Demo factory: **PolyOps Demo Works**.
 
 ## Stack
 
@@ -75,7 +75,7 @@ Copy `.env.example` to `.env` and fill in the required values:
 
 | Variable | Required | Example |
 |---|---|---|
-| `DATABASE_URL` | ✅ | `postgresql://user:pass@host/packbay?sslmode=verify-full` |
+| `DATABASE_URL` | ✅ | `postgresql://user:pass@host/polyops?sslmode=verify-full` |
 | `BETTER_AUTH_SECRET` | ✅ | Generate: `node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"` |
 | `BETTER_AUTH_URL` | ✅ | `http://localhost:3000` |
 | `CORS_ORIGINS` | ✅ | `http://localhost:5173` (comma-separated exact origins, no trailing slash) |
@@ -101,7 +101,7 @@ Set `DEMO_OWNER_PASSWORD`, `DEMO_STAFF_ONE_PASSWORD`, and `DEMO_STAFF_TWO_PASSWO
 npm run seed
 ```
 
-The seed creates products and synthetic orders for the Millet & Co. demo shop. Sign in as `owner@millet.example` to open the admin tools. Staff accounts are `packer-one@millet.example` and `packer-two@millet.example`. `DEMO_SEED_END_DATE` changes the anchor date. Seeding is destructive to demo data only; it never modifies non-demo shops.
+The seed creates synthetic plastics grades and buyer orders for PolyOps Demo Works. Sign in as `owner@millet.example` to open the admin tools. Staff accounts are `packer-one@millet.example` and `packer-two@millet.example`. `DEMO_SEED_END_DATE` changes the anchor date. Seeding is destructive to demo data only; it never modifies non-demo shops.
 
 ### 5. Start development servers
 
@@ -124,6 +124,19 @@ npm run dev:mobile
 ```
 
 Scan the QR code with the Expo Go app (SDK 58 compatible build).
+
+## Android submission and reviewer demo
+
+The installable Android deliverable is a signed APK. The preview profile in `mobile/eas.json` requests this format. The installed app includes its JavaScript bundle. Reviewers can open it without Expo Go, Metro or the developer's laptop when the API is hosted independently.
+
+1. Deploy the Express API with the server Dockerfile to an HTTPS host such as Render or Railway. Configure Postgres and Better Auth privately on the host. Set `BETTER_AUTH_URL` to the public API origin. Verify both `/health` and `/ready` from outside the development network.
+2. Set `EXPO_PUBLIC_API_URL` to that same origin in the EAS **preview** environment before building. This public address is compiled into the APK. The database URL, auth secret and demo passwords belong outside the mobile build.
+3. From `mobile/`, use an authenticated Expo account with access to the linked project and run `npx eas-cli build --platform android --profile preview`. Download the finished APK. Use the APK for the executable upload and the shareable build URL for the build-link field. Verify the link from a signed-out browser.
+4. Install the downloaded APK on Android and use mobile data to run the [factory walkthrough](docs/demo.md). Give reviewers access to the synthetic demo factory and share sign-in credentials privately. Keep the API and database available throughout evaluation.
+
+For a presenter-led demo, an HTTPS ngrok tunnel to the local **API port** also works if the laptop, API and tunnel stay running. The APK must point to that tunnel's origin. An Expo development tunnel only serves the development bundle. If the embedded API origin changes, build a new APK.
+
+**Submission links:** [repository](https://github.com/rajatrsrivastav/polyops) · [AI session history](https://github.com/rajatrsrivastav/polyops/tree/main/docs/ai-sessions) · [Expo APK guide](https://docs.expo.dev/build-reference/apk/).
 
 ## Verification
 
@@ -173,7 +186,7 @@ See [the runbook](docs/runbook.md) for operational details. Complete [privacy](d
 
 ## Documentation
 
-The design records below include earlier Packbay scope and decisions. The mobile workflows above describe the current PolyOps app.
+The requirements and operating guides below describe the factory workflows. Dated session records preserve their original context.
 
 - [PRD](docs/prd.md) — product requirements
 - [Architecture](docs/architecture.md) — system design

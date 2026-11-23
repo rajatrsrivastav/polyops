@@ -1,6 +1,6 @@
 # PolyOps for iOS and Android
 
-PolyOps runs on Expo SDK 58 with Expo Router. The app connects to the shared Express API using a Better Auth bearer session.
+Factory administrators and dispatch staff use PolyOps to track materials, reserve stock for business buyers and dispatch orders. The app runs on Expo SDK 58 with Expo Router. The app connects to the shared Express API using a Better Auth bearer session.
 
 ## Run locally
 

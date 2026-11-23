@@ -11,7 +11,8 @@ import {
 const pool: Sql = { query };
 export type Role = 'owner' | 'staff';
 export type OrderStatus = 'pending' | 'packed' | 'shipped' | 'delivered' | 'cancelled';
-export type Channel = 'instagram' | 'whatsapp' | 'website' | 'other';
+export const orderChannels = ['purchase_order', 'phone', 'email', 'other', 'instagram', 'whatsapp', 'website'] as const;
+export type Channel = (typeof orderChannels)[number];
 export type MovementType = 'reserve' | 'restock' | 'receive';
 export type OrderItem = {
   productId: string;
@@ -108,8 +109,8 @@ function roleOf(value: string): Role {
   throw new Error('Expected a shop role');
 }
 function channelOf(value: string): Channel {
-  if (value === 'instagram' || value === 'whatsapp' || value === 'website' || value === 'other')
-    return value;
+  const channel = orderChannels.find((source) => source === value);
+  if (channel) return channel;
   throw new Error('Expected an order channel');
 }
 function statusOf(value: string): OrderStatus {
