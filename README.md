@@ -1,56 +1,189 @@
-# FactoryEase
+# PolyOps
 
-Expo + React Native app for daily factory operations: attendance, expenses (with bill photos), invoices, delivery challans, and simple reports — offline-capable, large-tap UI, English/Hindi.
+PolyOps helps a plastics supplier answer a question before accepting an order: how many units of this grade are still available to promise? Receiving a delivery adds stock, accepting a buyer order reserves it, and cancellation returns it. The owner taking orders and the staff packing them see the same ledger on their phones.
+
+For example, receiving ten units and reserving three leaves seven available for the next buyer. The movement history explains how that balance changed.
+
+Demo brand: **Millet & Co.**
 
 ## Stack
 
-Expo SDK 58 · TypeScript · Expo Router · NativeWind · Zustand · TanStack Query · Zod · Supabase
+`mobile/` uses Expo SDK 58, React Native and Expo Router. `server/` uses Express 5, TypeScript, Postgres, Better Auth and Zod. The previous Vite dashboard in `web/` is paused.
 
-## Setup
-
-```bash
-cp .env.example .env
-# set EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY
-
-npm install
-npm run start
+```mermaid
+flowchart LR
+  App["PolyOps Expo app"] -->|bearer token| API["Express REST API"]
+  Auth["better-auth"] -->|email + password| API
+  API -->|shop-scoped transactions| PG[("Neon Postgres")]
+  API -->|aggregate JSON only| Gemini["Gemini"]
+  API -->|sanitized errors, optional| Sentry["Sentry"]
 ```
 
-Apply SQL under `supabase/migrations/`, then bootstrap owner/factory with `supabase/seed.sql`.
+## What is implemented
 
-## Scripts
+- Email/password authentication via better-auth, mobile bearer sessions, role-based access and shop isolation.
+- Strict Zod validation, typed errors, exact-origin CORS, Helmet, safe structured logging (pino) and rate limits.
+- Product search, pagination, soft archive and inventory movement ledger.
+- Atomic multi-item orders with server-side pricing, merged duplicate items and optional idempotency keys.
+- Conditional status transitions; cancellation returns stock in a single transaction.
+- Integer-paise analytics with IST day boundaries, zero-filled periods and cancelled sales excluded.
+- Weekly Gemini brief: aggregate data only, output/number checks, generation lease, weekly cache, quota, timeout and template fallback.
+- Factory admin screens in Expo for catalog, buyer orders, inventory, dispatch, reports and the weekly brief. Staff have a separate set of actions in the same app.
+- Stock and order quantities are whole units. Structured lots, weight tracking and production yield are outside the current inventory contract.
+- Demo seeding, admin scripts, Docker image, CI workflow and migration scripts.
 
-| Command | Purpose |
-|---------|---------|
-| `npm run start` | Expo dev server |
-| `npm run typecheck` | TypeScript |
-| `npm run lint` | Expo lint |
-| `npm run build:android:preview` | EAS Android APK (sideload) |
-| `npm run build:android:production` | EAS Android App Bundle |
-| `npm run build:ios:preview` | EAS iOS (device/internal) |
+## Layout
 
-## EAS builds (Android first)
-
-1. Install CLI: `npm i -g eas-cli`
-2. `eas login`
-3. `eas build:configure` — fills `app.json` `extra.eas.projectId` / `owner`
-4. Add EAS secrets for `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_ANON_KEY`
-5. Preview APK for father’s phone:
-
-```bash
-eas build --platform android --profile preview
+```
+├── server/          Express 5 API (Node 22, TypeScript strict, pg, better-auth)
+│   ├── src/
+│   │   ├── db/          pool, schema, store
+│   │   ├── lib/         auth, logger, appError, time, monitoring
+│   │   ├── middleware/  auth, requireRole, validate, errorHandler
+│   │   ├── routes/      HTTP-only route handlers
+│   │   └── services/    business logic (products, orders, stock, dashboard, ai)
+│   ├── scripts/         seed, admin, migrations, load tests
+│   └── tests/           Jest + Supertest + PGlite
+├── web/             Paused Vite dashboard
+├── mobile/          Factory app (Expo SDK 58 + Expo Router)
+│   └── src/
+│       ├── app/         sign-in, factory desk, admin, stock and dispatch
+│       ├── features/    mobile admin controls and data
+│       ├── components/  shared UI
+│       └── lib/         API client, session and packing logic
+└── docs/            PRD, architecture, API contract, data model, ADRs, runbook
 ```
 
-6. Production (Play Store AAB):
+## Prerequisites
 
-```bash
-eas build --platform android --profile production
+- **Node.js** ≥ 22.12 (within the Node 22 line)
+- **npm**
+- A **Postgres** database (Neon recommended, or any Postgres ≥ 15)
+
+## Local setup
+
+### 1. Install dependencies
+
+```sh
+npm install --prefix server
+npm install --prefix mobile
 ```
 
-iOS requires an Apple Developer account. See `eas.json` and `docs/REVIEW.md`.
+### 2. Configure environment
 
-## Docs
+Copy `.env.example` to `.env` and fill in the required values:
 
-- `USER_GUIDE.md` — one-page guide to print for the owner
-- `docs/REVIEW.md` — technical debt and reliability priorities
-- `docs/AI_CHAT_HISTORY.md` — principal-engineer AI chat / build history (Prompts 0–9); root `AI_CHAT_HISTORY.md` points here for portal submission
+| Variable | Required | Example |
+|---|---|---|
+| `DATABASE_URL` | ✅ | `postgresql://user:pass@host/packbay?sslmode=verify-full` |
+| `BETTER_AUTH_SECRET` | ✅ | Generate: `node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"` |
+| `BETTER_AUTH_URL` | ✅ | `http://localhost:3000` |
+| `CORS_ORIGINS` | ✅ | `http://localhost:5173` (comma-separated exact origins, no trailing slash) |
+| `EXPO_PUBLIC_API_URL` | ✅ (mobile) | `http://<laptop-LAN-IP>:3000` |
+| `GEMINI_API_KEY` | Optional | Your Gemini API key (without it, the weekly brief uses a template fallback) |
+| `GEMINI_MODEL` | Optional | e.g. `gemini-2.0-flash` |
+| `SENTRY_DSN` | Optional | Sentry project DSN |
+| `LOG_LEVEL` | Optional | `info` (default), `debug`, `trace`, etc. |
+| `PORT` | Optional | `3000` (default) |
+| `TRUST_PROXY_HOPS` | Optional | `0` (default); set for reverse proxies |
+
+Do not commit `.env` or any file containing secrets.
+
+### 3. Run the database schema
+
+The schema is applied automatically on server startup (`ensureSchema`). No manual migration step is needed for first run.
+
+### 4. Seed demo data
+
+Set `DEMO_OWNER_PASSWORD`, `DEMO_STAFF_ONE_PASSWORD`, and `DEMO_STAFF_TWO_PASSWORD` privately to passwords of at least eight characters, then:
+
+```sh
+npm run seed
+```
+
+The seed creates products and synthetic orders for the Millet & Co. demo shop. Sign in as `owner@millet.example` to open the admin tools. Staff accounts are `packer-one@millet.example` and `packer-two@millet.example`. `DEMO_SEED_END_DATE` changes the anchor date. Seeding is destructive to demo data only; it never modifies non-demo shops.
+
+### 5. Start development servers
+
+Run each in a **separate terminal**:
+
+```sh
+# API server → http://localhost:3000
+npm run dev:server
+
+# Mobile (Expo) → Expo DevTools
+npm run dev:mobile
+```
+
+## PolyOps on a phone
+
+Set `EXPO_PUBLIC_API_URL` to your laptop's LAN IP and port (not `localhost`). Phone and laptop must share a network; allow the API port on your firewall.
+
+```sh
+npm run dev:mobile
+```
+
+Scan the QR code with the Expo Go app (SDK 58 compatible build).
+
+## Verification
+
+```sh
+# Server: lint, typecheck, tests
+npm --prefix server run check
+
+# Mobile: lint, typecheck, tests
+npm --prefix mobile run check
+
+# Both packages from the root:
+npm run check
+```
+
+Server tests run against PGlite (in-process Postgres). Bearer verification and Gemini are mocked. Tests do not call any external service. Key test cases: concurrent reservations, stock rollback, cancellation races, role restrictions, cross-shop isolation, IST aggregation and AI fallback/cache guards.
+
+## Build for production
+
+```sh
+npm --prefix server run build
+(cd mobile && npx expo export --platform android)
+```
+
+## Docker
+
+```sh
+docker compose --profile api up --build
+```
+
+The API Dockerfile uses a multi-stage build (`node:22-slim`), runs as a non-root user, and includes a healthcheck on `/health`.
+
+## Admin scripts
+
+```sh
+cd server
+npm run admin:create-shop     # provision a new shop
+npm run admin:delete-shop     # remove a shop
+```
+
+## Deployment
+
+- **API**: Build `server/Dockerfile`, deploy to Railway or Render. Set all required env vars. `TRUST_PROXY_HOPS` must match your proxy chain.
+- **Mobile**: Build with EAS (`npx eas-cli@latest build --platform android --profile preview`).
+- **Postgres**: Use Neon (or any managed Postgres). Production requires the indexes from `server/scripts/migrations/`.
+
+See [the runbook](docs/runbook.md) for operational details. Complete [privacy](docs/privacy.md), backups and the launch checklist before using real customer data.
+
+## Documentation
+
+The design records below include earlier Packbay scope and decisions. The mobile workflows above describe the current PolyOps app.
+
+- [PRD](docs/prd.md) — product requirements
+- [Architecture](docs/architecture.md) — system design
+- [API Contract](docs/api-contract.md) — REST endpoint reference
+- [Data Model](docs/data-model.md) — Postgres schema
+- [ADRs](docs/adr/) — architecture decision records
+- [Implementation Status](docs/implementation-status.md) — what is verified
+- [Runbook](docs/runbook.md) — deployment and operations
+- [Privacy](docs/privacy.md) — data handling
+
+## How I used AI
+
+Codex authored this implementation, including sections originally reserved for hand-writing, after Rajat explicitly authorized that change. The [session log](docs/ai-sessions/2026-11-19-d01-packbay-build.md) records observed failures, checks, assumptions and review tasks. [ADRs](docs/adr/) capture implementation choices for human review.

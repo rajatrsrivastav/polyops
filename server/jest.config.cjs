@@ -1,0 +1,1 @@
+module.exports = { preset: 'ts-jest', testEnvironment: 'node', testMatch: ['**/tests/**/*.test.ts'], setupFilesAfterEnv: ['<rootDir>/tests/setup.ts'], testTimeout: 60000, collectCoverageFrom: ['src/services/**/*.ts'], coverageDirectory: 'coverage' };

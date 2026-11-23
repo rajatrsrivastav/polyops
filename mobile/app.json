@@ -1,0 +1,1 @@
+{"expo":{"name":"PolyOps","slug":"packbay-staff","scheme":"packbay","version":"1.0.0","orientation":"portrait","userInterfaceStyle":"light","plugins":["expo-router"],"android":{"package":"com.packbay.staff"},"experiments":{"typedRoutes":true}}}
