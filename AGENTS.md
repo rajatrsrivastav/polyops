@@ -13,12 +13,12 @@ docs/data-model.md, docs/adr/. If code and docs disagree, STOP and ask me. Do no
 I am Rajat, the engineer who owns this codebase. I am learning. Your job is to draft, explain and
 review; I make design decisions. Prefer small, explainable changes over clever ones.
 ## Stack (locked; do not add or swap libraries without asking me first)
-- server/: Node 22, Express, TypeScript (strict), Zod, Mongoose, firebase-admin, express-rate-limit,
-  helmet, cors, pino / pino-http, Jest + Supertest, mongodb-memory-server (replica set) for tests.
-- web/: React + Vite + TypeScript, Tailwind, React Router, React Query, Recharts, Firebase Web SDK.
-- mobile/: Expo (React Native, TypeScript), Expo Router, Firebase Auth, same REST API.
+- server/: Node 22, Express, TypeScript (strict), Zod, pg, better-auth, express-rate-limit,
+  helmet, cors, pino / pino-http, Jest + Supertest, @electric-sql/pglite for tests.
+- web/: React + Vite + TypeScript, Tailwind, React Router, React Query, Recharts. Sign-in calls the API.
+- mobile/: Expo (React Native, TypeScript), Expo Router, bearer token in AsyncStorage, same REST API.
 - AI: Google Gemini via the official @google/genai SDK, server-side only.
-- Infra: Docker, GitHub Actions, MongoDB Atlas, Railway or Render (API), Vercel (web), EAS (APK).
+- Infra: Docker, GitHub Actions, Neon Postgres, Railway or Render (API), Vercel (web), EAS (APK).
 If you think a new dependency is needed, explain why and the alternatives, then wait for my yes.
 ## How to work in this repo
 1. Never start coding on a new task without a plan. When I say "plan only", output: files you
@@ -76,8 +76,8 @@ Do not rewrite them unless I say "rewrite <file>":
 - Never put the AI (Gemini) in the order, stock or auth path.
 - Never mark a task done if lint, typecheck or tests fail. Report the failure instead.
 ## Testing rules
-- Jest + Supertest against `app.ts` (no `listen`). Real MongoDB via mongodb-memory-server
-  replica set (needed for transactions). Mock only firebase-admin `verifyIdToken` and Gemini.
+- Jest + Supertest against `app.ts` (no `listen`). In-process Postgres via PGlite
+  (transactions and partial unique indexes). Mock bearer verification and Gemini. Do not call Neon.
 - Each acceptance criterion I write gets at least one test, named "AC<n>: <criterion>".
 - Must-have cases: 401 no/invalid token; 403 wrong role; 400 Zod shape; 409 insufficient stock
   with stock unchanged; concurrent reserve does not oversell; 409 illegal status transition;
